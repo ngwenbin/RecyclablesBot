@@ -1,6 +1,6 @@
 # remeBot
+Karang Guni hailing Bot
 ## Table of contents
-
 
 * Requirements
 
@@ -23,7 +23,7 @@ To install gspread:
 To install python-telegram-bot:
 
 ```sh
-    pip install python-telegram-bot --upgrade
+  pip install python-telegram-bot --upgrade
 ```
 
 ## Misc
