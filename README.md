@@ -1,5 +1,5 @@
 # remeBot
-Karang Guni hailing Bot
+Singapore 1st Karang Guni hailing Bot
 ## Table of contents
 
 * Requirements
