@@ -29,6 +29,6 @@ To install python-telegram-bot:
 ## Misc
 
 - Do not share bot API TOKEN
-- Any updates to the framework must be done via pull request.
+- Updates to the framework should be done via pull request.
   
-  Commit directly to a separate branch and start a pull request. Be careful of editing files in master branch, especially main framework files!
+  Be careful of editing files in master branch, especially main framework files!
