@@ -11,18 +11,26 @@ creds = ServiceAccountCredentials.from_json_keyfile_name("remebot.json", scope)
 gc = gspread.authorize(creds)
 sheet = gc.open("remeBot Database").worksheet("Address")
 sheet2 = gc.open("remeBot Database").worksheet("Orders")
+sheet3 = gc.open("remeBot Database").worksheet("Prices")
 
-# States
-FIRST, SECOND, THIRD, CONFIRM, REGISTER, POSTAL, ADDRESS, UNIT = range(8)
-# Primary callbacks
-RECYCLE, INFO, HELP, DONE, REGISTERYES, REGISTERNO = range(6)
-# Secondary callbacks
-PAPERS, ELECTRONICS, CLOTHES, BACK1, BACK2, PAPER1, PAPER2, PAPER3 = range(8)
+# First level states
+MAIN_MENU, REGISTER, REGISTERNO, REGISTERYES, INFO, HELP, POSTAL, ADDRESS, UNIT = map(chr, range(9))
+# Second level states
+RECYCLABLES, RECYCLE = map(chr, range(9, 11))
+# Third level states
+PAPER_WEIGHT, CONFIRM, ITEM_PAPERS, ITEM_ELECTRONICS, ITEM_CLOTHES = map(chr, range(11, 16))
+# Third level states
+PAPER1, PAPER2, PAPER3, PAPER4 = map(chr, range(16,20))
+# Metal states
+STOPPING = map(chr, range(20,21))
+
+# Others
+START_OVER = map(chr,range(21,22))
 
 END = ConversationHandler.END
 
 #Cache formatting
-def facts_to_str(user_data):
+def cache_format(user_data):
     facts = list()
     for key, value in user_data.items():
         facts.append('{}: {}'.format(key, value))
@@ -31,118 +39,116 @@ def facts_to_str(user_data):
 
 # Main Defs
 def start(update, context):
-    userids = str(update.message.from_user.id)
-    try:
-        _cell = sheet.find(userids)
-        keyboard = [[InlineKeyboardButton("Start recycling! ♻️", callback_data=str(RECYCLE))],
+    main_text = "*remeBot* can help you to schedule recyclables collection bookings conveniently."\
+                "With remeBot, you can play your part in helping the environment while improving the producitivty of  "\
+                "local rag n' bone collectors. In addition to that, you can receive incentives for your recyclables! ☺️"\
+                "\n\nNow, what can I do for you?"
+                
+    register_text = "Oops! Looks like you are not registered with us."\
+                    "\nIn order to use our service,"\
+                    " I will require your residential address for registration purposes."\
+                    "\n\nWould you like to proceed?"\
+                    "\n\nType /cancel to cancel."
+
+    main_keyboard = [[InlineKeyboardButton("Start recycling! ♻️", callback_data=str(RECYCLE))],
                     [InlineKeyboardButton("Info 📋", callback_data=str(INFO))],
                     [InlineKeyboardButton("Help 🙋🏻‍♀️", callback_data=str(HELP))],
-                    [InlineKeyboardButton("Exit", callback_data=str(DONE))]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
+                    [InlineKeyboardButton("Exit", callback_data=str(END))]]
 
-        update.message.reply_text(
-            "*Hello " + str(update.message.from_user.first_name)+"! 👋🏻*"\
-            "\n\n*remeBot* can help you to schedule recyclables collection bookings conveniently. "\
-            "With remeBot, you can play a part in saving the earth while helping to improve the producitivty of  "\
-            "local rag n' bone collectors. In addition to that, you will be rewarded with incentives for your recyclables! ☺️"\
-            "\n\nNow, what can I do for you?",
-            parse_mode="Markdown",
-            reply_markup=reply_markup
+    main_markup = InlineKeyboardMarkup(main_keyboard)
+
+    reg_keyboard = [[InlineKeyboardButton("Yes", callback_data=str(REGISTERYES))],
+                    [InlineKeyboardButton("No", callback_data=str(REGISTERNO))]]
+
+    reg_markup = InlineKeyboardMarkup(reg_keyboard)
+
+    if context.user_data.get(START_OVER):
+        update.callback_query.edit_message_text(
+             text=main_text,
+             parse_mode="Markdown",
+             reply_markup=main_markup
         )
-
-        return FIRST
-        
-    except gspread.exceptions.CellNotFound: #gspread exceptions
-        
-        keyboard = [[InlineKeyboardButton("Yes", callback_data=str(REGISTERYES))],
-                    [InlineKeyboardButton("No", callback_data=str(REGISTERNO))]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
+        context.user_data[START_OVER] = False
+        return MAIN_MENU
+    else:
+        userids = str(update.message.from_user.id)
         update.message.reply_text(
-            text="Oops! Looks like you are not registered with us."\
-                 "\nIn order to use our service,"\
-                 " I will require your residential address for registration purposes."\
-                 "\n\nWould you like to proceed?"\
-                 "\n\nType /cancel to cancel.",
-            reply_markup=reply_markup
-        )
+            "*Hello " + str(update.message.from_user.first_name)+"!* 👋🏻 \nWelcome to remeBot!",
+            parse_mode="Markdown")
+        try:
+            _cell = sheet.find(userids)
+            update.message.reply_text(
+                text=main_text,
+                parse_mode="Markdown",
+                reply_markup=main_markup
+            )
 
-        return REGISTER
+            return MAIN_MENU
+            
+        except gspread.exceptions.CellNotFound: #gspread exceptions
+            update.message.reply_text(
+                text= register_text,
+                reply_markup=reg_markup
+            )
 
-def start_callback(update, context):
-    query = update.callback_query
-    bot = context.bot
-    #user_firstname = str(update.message.from_user.first_name)
-    keyboard = [[InlineKeyboardButton("Start recycling! ♻️", callback_data=str(RECYCLE))],
-                [InlineKeyboardButton("Info 📋", callback_data=str(INFO))],
-                [InlineKeyboardButton("Help 🙋🏻‍♀️", callback_data=str(HELP))],
-                [InlineKeyboardButton("Exit", callback_data=str(DONE))]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    bot.edit_message_text(
-        chat_id=query.message.chat_id,
-        message_id=query.message.message_id,
-        text="*Hello! 👋🏻*"\
-             "\n\n*remeBot* can allow you to schedule recyclables collection bookings easily. "\
-             "With remeBot, you can play a part in saving the earth while helping to improve the producitivty of  "\
-             "local rag n' bone collectors. In addition to that, you are rewarded with incentives for your recyclables! "\
-             "\n\nIt's definitely a win-win-win! ☺️"\
-             "\n\nNow, what can I do for you?",
-        parse_mode='Markdown',
-        reply_markup=reply_markup
-    )
-
-    return FIRST
+            return REGISTER
 
 def recycle(update, context):
     query = update.callback_query
     bot = context.bot
-    keyboard = [[InlineKeyboardButton("Papers", callback_data=str(PAPERS))],
-                [InlineKeyboardButton("Electronics", callback_data=str(ELECTRONICS))],
-                [InlineKeyboardButton("Clothes", callback_data=str(CLOTHES))],
-                [InlineKeyboardButton("Back", callback_data=str(BACK1))]
+    keyboard = [[InlineKeyboardButton("Papers", callback_data=str(ITEM_PAPERS))],
+                [InlineKeyboardButton("Electronics", callback_data=str(ITEM_ELECTRONICS))],
+                [InlineKeyboardButton("Clothes", callback_data=str(ITEM_CLOTHES))],
+                [InlineKeyboardButton("Back", callback_data=str(END))]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     bot.edit_message_text(
         chat_id=query.message.chat_id,
         message_id=query.message.message_id,
-        text="Please select the type of recyclables:",
+        text="Please select the type of recyclables you want to recycle:",
         reply_markup=reply_markup
     )
 
-    return SECOND
+    return RECYCLABLES
 
 def papers(update, context):
     query = update.callback_query
     bot = context.bot
-    keyboard = [[InlineKeyboardButton("Less than 20KG", callback_data=str(PAPER1))],
+    keyboard = [[InlineKeyboardButton("Less than 10KG", callback_data=str(PAPER1))],
                 [InlineKeyboardButton("20KG to 30KG", callback_data=str(PAPER2))],
                 [InlineKeyboardButton("30KG to 40KG", callback_data=str(PAPER3))],
-                [InlineKeyboardButton("Back", callback_data=str(BACK2))]
+                [InlineKeyboardButton("More than 50KG", callback_data=str(PAPER4))],
+                [InlineKeyboardButton("Back", callback_data=str(END))]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     bot.edit_message_text(
         chat_id=query.message.chat_id,
         message_id=query.message.message_id,
-        text="Please select an estimated weight of your papers:",
-        reply_markup=reply_markup
+        text="*Please select an estimated weight of your papers:*"\
+             "\n\nNeed help in estimating the weight? Click [here](https://i.imgur.com/OvameYt.png)!",
+        parse_mode='Markdown',
+        reply_markup=reply_markup,
+        disable_web_page_preview=True
     )
 
-    return THIRD
+    return PAPER_WEIGHT
 
 def p1(update, context):
     query = update.callback_query
     bot = context.bot
+    user_data = context.user_data
+    context.user_data['Papers'] = "Less than 10KG"
     bot.edit_message_text(
         chat_id=query.message.chat_id,
         message_id=query.message.message_id,
-        text="You will receive [$1.00 - $1.50] for your recyclables"
+        text=("*Your current order:*\n{}".format(cache_format(user_data))),
+        parse_mode='Markdown'
     )
 
-    keyboard = [["Yes","No"]]
+    keyboard = [["Confirm","Cancel"],
+                ["Wait! I have more items to recycle!"]]
     reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
     bot.send_message(
                      chat_id=query.message.chat_id,
@@ -153,44 +159,55 @@ def p1(update, context):
 
     return CONFIRM
 
-def choiceyes(update, context):
-    text =  "*Your order has been confirmed*"
-
-    text2 = "\n\nOrder No #01"\
-            "\n--------------------"\
-            "\n*Item*: Papers"\
-            "\n*Weight*: Less than 20KG"\
-            "\n*Price* ≈ $1.00 - $1.50"\
+def success(update, context):
+    user_data = context.user_data
+    order_number = sheet2.acell('C3').value
+    userids = str(update.message.from_user.id)
+    orders = cache_format(user_data)
+    price = sheet3.acell('B2').value
+    text = ("*Your order has been confirmed!* 👍🏻")
+    
+    text2 = ("\n\n*Order No #{0}*"\
+             "\n-------------------------"\
+             "{1}"\
+             "\n*Price* = {2}".format(order_number, orders, price)
+    )
 
     text3 = "\n\nSee FAQ or /help should you need any help"
+    #text4= ("Address: {}".format())
     update.message.reply_text(text=text+text2+text3, 
                               parse_mode="Markdown",
                               reply_markup=ReplyKeyboardRemove(True)
                               )
-    """#this is for order message notification
+    
+    """this is for order message notification
     bot = context.bot
     chat_id="-351944461"
     bot.send_message(chat_id=chat_id, 
                      parse_mode="Markdown", 
                      text=text2)
     """
+    sheet2.append_row([order_number, userids, orders, price],value_input_option="RAW")
+    return STOPPING
 
-    return end
-
-def choiceno(update, context):
+def failure(update, context):
     update.message.reply_text("Sure thing, no worries!", reply_markup=ReplyKeyboardRemove(True))
 
-    return end
+    return STOPPING
 
 def electronics(update, context):
     query = update.callback_query
     bot = context.bot
+    keyboard = [[InlineKeyboardButton("Back", callback_data=str(END))]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
     bot.edit_message_text(
         chat_id=query.message.chat_id,
         message_id=query.message.message_id,
-        text="WIP!"
+        text="WIP!",
+        reply_markup=reply_markup
     )
-
+    
     return END
 
 def clothes(update, context):
@@ -215,7 +232,7 @@ def info(update, context):
 
     return END
 
-def help(update, context):
+def helps(update, context):
     query = update.callback_query
     bot = context.bot
     bot.edit_message_text(
@@ -226,26 +243,7 @@ def help(update, context):
 
     return END
 
-def end(update, context):
-    query = update.callback_query
-    bot = context.bot
-    bot.edit_message_text(
-        chat_id=query.message.chat_id,
-        message_id=query.message.message_id,
-        text="Thank you and have a nice day! Hope to see you soon!"
-    )
-    return END
-
-def end_reg(update, context):
-    user_data = context.user_data
-    user_data.clear()
-    update.message.reply_text(
-        text='No problem! Hope to see you soon!'
-    )
-    return END
-
 def register(update, context):
-    #sheet.append_row([userids],value_input_option="RAW") #Append full row
     bot = context.bot
     query = update.callback_query
     bot.edit_message_text(
@@ -282,7 +280,6 @@ def postal(update, context):
 
         return POSTAL
 
-
 def address(update, context):
     address = update.message.text
     context.user_data['Address'] = address
@@ -307,8 +304,8 @@ def unit(update, context):
         address = context.user_data['Address']
         unit = context.user_data['Unit']
         update.message.reply_text("Your address:\n{}"\
-                                  "\n\nThank you for registering! To change your address,"\
-                                  " navigate to Help in the menu.".format(facts_to_str(user_data)))
+                                  "\nThank you for registering! To change your address,"\
+                                  " navigate to Help in the menu.".format(cache_format(user_data)))
         
         sheet.append_row([userids,username,userfirstname,postal,address,unit],value_input_option="RAW")
         user_data.clear()
@@ -320,52 +317,178 @@ def unit(update, context):
 
         return end_reg(update, context)
 
+def end(update, context):
+    query = update.callback_query
+    bot = context.bot
+    user_data = context.user_data
+    user_data.clear()
+    bot.edit_message_text(
+        chat_id=query.message.chat_id,
+        message_id=query.message.message_id,
+        text="Alright! Thank you and have a nice day!"
+    )
+    return END
+
+def end_reg(update, context):
+    user_data = context.user_data
+    user_data.clear()
+    update.message.reply_text(
+        text='No problem! Hope to see you soon!'
+    )
+    return END
+
+def end_nested(update, context):
+    query = update.callback_query
+    bot = context.bot
+    bot.edit_message_text(
+        chat_id=query.message.chat_id,
+        message_id=query.message.message_id,
+        text="Alright! Thank you and have a nice day!"
+    )
+    return STOPPING
+
+def end_recycle(update, context):
+    data = context.user_data
+    data[START_OVER] = True
+    start(update, context)
+    return END
+
+def end_papers(update, context):
+    recycle(update, context)
+    return END
+
 def main():
     updater = Updater('945909213:AAHynjzuKmbJA2f_IoRmUJsSQG2QGr8077U', use_context=True)
     dp = updater.dispatcher
 
-    # ^ means "start of line/string"
-    # $ means "end of line/string"
-    # So ^ABC$ will only allow "ABC"
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
+    # Third level (Papers)
+    papers_level = ConversationHandler(
+        entry_points=[CallbackQueryHandler(papers, pattern='^' + str(ITEM_PAPERS) + '$')],
 
         states={
-            REGISTER: [CallbackQueryHandler(register, pattern='^' + str(REGISTERYES) + '$'),
-                       CallbackQueryHandler(end, pattern='^' + str(REGISTERNO) + '$')],
+            PAPER_WEIGHT: [
+                CallbackQueryHandler(p1, pattern='^' + str(PAPER1) + '$')
+                #CallbackQueryHandler(p1, pattern='^' + str(PAPER2) + '$'),
+                #CallbackQueryHandler(p1, pattern='^' + str(PAPER3) + '$'),
+                #CallbackQueryHandler(p1, pattern='^' + str(PAPER4) + '$'),
+                
+            ],
 
+            CONFIRM: [
+                MessageHandler(Filters.regex('^Confirm$'), success),
+                MessageHandler(Filters.regex('^Cancel$'), failure)
+            ],
+        },
+
+        fallbacks=[
+            CallbackQueryHandler(end_papers, pattern='^' + str(END) + '$'),
+            CommandHandler('stop', end_nested)
+        ],
+
+        map_to_parent={
+            STOPPING: STOPPING,
+            END: RECYCLABLES,
+        }
+    )
+
+    # Third level (Electronics)
+    electronics_level = ConversationHandler(
+        entry_points=[CallbackQueryHandler(electronics, pattern='^' + str(ITEM_ELECTRONICS) + '$')],
+
+        states={
+
+        },        
+
+        fallbacks=[
+            CallbackQueryHandler(recycle, pattern='^' + str(END) + '$'),
+            CommandHandler('stop', end_nested)
+        ],
+
+        map_to_parent={
+            STOPPING: END,
+            END: RECYCLABLES,
+        }
+    )
+
+    # Third level (Clothes)
+    clothes_level = ConversationHandler(
+        entry_points=[CallbackQueryHandler(clothes, pattern='^' + str(ITEM_CLOTHES) + '$')],
+
+        states={
+
+        },        
+
+        fallbacks=[
+            CallbackQueryHandler(recycle, pattern='^' + str(END) + '$'),
+            CommandHandler('stop', end_nested)
+        ],
+
+        map_to_parent={
+            STOPPING: END,
+            END: RECYCLABLES,
+        }
+    )
+
+    # Second level (Item selection)
+    recycle_level = ConversationHandler(
+        entry_points=[CallbackQueryHandler(recycle, pattern='^' + str(RECYCLE) + '$')],
+
+        states={
+            RECYCLABLES: [papers_level, electronics_level, clothes_level]
+        },        
+
+        fallbacks=[
+            CallbackQueryHandler(end_recycle, pattern='^' + str(END) + '$'),
+            CommandHandler('stop', end_nested)
+        ],
+
+        map_to_parent={
+            STOPPING: END,
+            END: MAIN_MENU,
+        }
+    )
+
+
+    # Address registration
+    register_level = ConversationHandler(
+        entry_points=[CallbackQueryHandler(register, pattern='^' + str(REGISTERYES) + '$')],
+
+        states={
             POSTAL: [MessageHandler(Filters.text, postal)],
 
             ADDRESS: [MessageHandler(Filters.text, address)],
 
             UNIT: [MessageHandler(Filters.text, unit)],
-            
-            FIRST:  [CallbackQueryHandler(recycle, pattern='^' + str(RECYCLE) + '$'),
-                     CallbackQueryHandler(info, pattern='^' + str(INFO) + '$'),
-                     CallbackQueryHandler(help, pattern='^' + str(HELP) + '$'),
-                     CallbackQueryHandler(end, pattern='^' + str(DONE) + '$')],
+        },
+        
+        fallbacks=[
+            CommandHandler('cancel', end_reg),
+            CommandHandler('stop', end_reg)],
+    )
 
-            SECOND: [CallbackQueryHandler(papers, pattern='^' + str(PAPERS) + '$'),
-                     CallbackQueryHandler(electronics, pattern='^' + str(ELECTRONICS) + '$'),
-                     CallbackQueryHandler(clothes, pattern='^' + str(CLOTHES) + '$'),
-                     CallbackQueryHandler(start_callback, pattern='^' + str(BACK1) + '$')],
+    # First level (Main menu)
+    conv_handler = ConversationHandler(
+        entry_points=[CommandHandler('start', start)],
 
-            THIRD:  [CallbackQueryHandler(p1, pattern='^' + str(PAPER1) + '$'),
-                     CallbackQueryHandler(p1, pattern='^' + str(PAPER2) + '$'),
-                     CallbackQueryHandler(p1, pattern='^' + str(PAPER3) + '$'),
-                     CallbackQueryHandler(recycle, pattern='^' + str(BACK2) + '$')],
+        states={
+            REGISTER: [register_level,
+                       CallbackQueryHandler(end_reg, pattern='^' + str(REGISTERNO) + '$')],
 
-            CONFIRM:  [MessageHandler(Filters.regex('^Yes$'), choiceyes),
-                       MessageHandler(Filters.regex('^No$'), choiceno)
-                      ],
-                     
+            MAIN_MENU: [
+                recycle_level,
+                CallbackQueryHandler(info, pattern='^' + str(INFO) + '$'),
+                CallbackQueryHandler(helps, pattern='^' + str(HELP) + '$'),
+                CallbackQueryHandler(end, pattern='^' + str(END) + '$')],
+
         },
 
-        fallbacks=[CommandHandler('cancel', end_reg)]
+        fallbacks=[CommandHandler('stop', end)]
     )
-    
+
+    conv_handler.states[PAPER_WEIGHT] = conv_handler.states[MAIN_MENU]
+    conv_handler.states[STOPPING] = conv_handler.entry_points
     dp.add_handler(conv_handler)
-    updater.start_polling(read_latency=0)
+    updater.start_polling()
     updater.idle()
 
 if __name__ == '__main__':
