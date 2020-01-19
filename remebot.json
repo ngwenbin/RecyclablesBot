@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "remebot",
+  "private_key_id": "fa0da2eae56f5aa8149ac3fb6746635e1d0fdd70",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCWAK2w1EUAzmkk\nLdR+B0K5vasRS0ybKR6Yx0ywKAHrpA6KR9BnhHRzreTnU2j69jGoK+cCvaxTVR1+\nGVxw50wrf2oyDwDeevvGN33K/z2DZ6PCtx+JcAWAIUBXWtKY1eBk2n9MMePvhQPg\n52RshOO3ci1jAaVPniSqDZkp1dDYJB/GsOLkYpqAjKWqdl/ZPm+Gx2ZEUSGcae9m\nfFlOQ+53St99ijDSo0KLxveOXpm2Vbzu+FnKe0bIBE3rFyAA6iB9TupZByK2KB4I\nXbfe4TSC1pzlj4Sq4TVoVtrl126sPw8v4tGsszggN7klmpmlIiYEn7Ka8diRl2kd\nt5GXqMdnAgMBAAECggEAI3NQmVBpaGnf1mGQbSKJJf2JzuIFXkwnA4Nif+VMouSY\nXRzgx345yVcJGJSRZHJHxQ9vHqo17lHY0QLsYnB/g24u6lq6YVoeY7ecnpuY7ZPS\nU4PUy7XyTthM7Pg1elJdoGg1GoxV6rb8diwpgy4a5TFyQYpTh8//qULidk0meNYg\nA+FWRPws3xjLMtdjqxj54GqxaiChSeYE5gi3c70rI5fFcIyz7Vfd/diczKuuG4ze\nVrQNATa8w3AVgmfyn4KFokMsMhZjqSz4dKYe5osPtf4LLFm0k8TUPwljzdVzddoF\nmrMzWxSdw6FQrC4A6d59hTFcpLQ4TcjEFBLwLM8JwQKBgQDNcWBp5ElWqtpLOkdB\nhNUktPTUhciAdeR0jgpEfHRfzyHSEMhLOacr8ilyHaIWcs0Ny/Xgr7lllxNEtKl7\nzTXnARMHqtlthl8gUpj2KoMVGvXMOQ5QenSp+rrC+PQsyYlmQ9Ifloa/ih9oQiBh\nNXKcEBc6jstLfTpfDw/SnpvXQQKBgQC66qR+BQql4ot3IRggmCaI1f6re2DMJguW\nGZUFx4tt4pCeajOQIOatsNo+gQzcZcoWvEu5NJyss86/q3EWTFQzUuISJUfeO91+\nCvJGaIcb4EZplGqk0GVFmy89d0R49iF5rAu0Ae1JGrvos7L+ctHFYUiZAQVexnKL\nhL34+aRcpwKBgQCXr1JEXO1ZNCSgzpK16WGGDKWIFI8JagIXnJgwIMO7ya9q7kE0\naYjohY/cVczLTk/gE+uizZvRSk5LuCg65DUcLkriql6G42Nw9gtCFflap+E7vBS5\njvB8YEdslWuTdeogu4p1ECrFWTH/RHOr0k6gs7Cy56NqRTfH39MK61idAQKBgCad\nQNwz6G46rfsvYA+jvxo3s0Pz2hxyo6QfptSp05kg3CWN5RcaZO1vArc069ZARQ6L\nWc1qHA/lmYmpPlSP8jkkH0YGY6F6lphqZIC9KWRN4d3/5kQkNTe7BnhZQlEG8AV1\n0HkgiMe4eSdqsEi2qbVwEpJhTp20u4ctJh3gXN8zAoGBAJFlvRj5cx7uUgJuD5q5\nJULE9QD9GRBRbUtP1JYz2BUADYc5YCdBXVC0A2kHqv1sSugvERsaJrsFJMvwZN50\ngBGtXUoFW7XmBnthcBv9W+HK/228/gr7v5h2R50bryWH6x1sdwFQ3cS4bSZpQgVH\nET5qgwhaUj1MzLR74U4fRJtb\n-----END PRIVATE KEY-----\n",
+  "client_email": "remebot@remebot.iam.gserviceaccount.com",
+  "client_id": "103389099021314299032",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/remebot%40remebot.iam.gserviceaccount.com"
+}
