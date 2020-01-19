@@ -1,35 +1,33 @@
-=================
-Table of contents
-=================
+# remeBot
+## Table of contents
 
-- `Requirements`_
 
-- `Misc`_
+* Requirements
 
-=================
-Requirements
-=================
+* Misc
+
+
+## Requirements
+
 Modulues/ APIs required to run
 
-- `gspread <https://github.com/burnash/gspread>`_
+* [gspread](https://github.com/burnash/gspread)
 
 To install gspread:
 
-.. code:: shell
-
+```sh
   pip install gspread
-  
-- `python-telegram-bot <https://github.com/python-telegram-bot/python-telegram-bot>`_
+```
+* [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot)
 
 To install python-telegram-bot:
 
-.. code:: shell
-
+```sh
     pip install python-telegram-bot --upgrade
+```
 
-=================
-Misc
-=================
+## Misc
+
 - Do not share bot API TOKEN
 - Any updates to the framework must be done via pull request.
   
