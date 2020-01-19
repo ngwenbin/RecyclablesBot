@@ -1,9 +1,17 @@
 =================
+Table of contents
+=================
+
+- `Requirements`_
+
+- `Misc`_
+
+=================
 Requirements
 =================
 Modulues/ APIs required to run
 
-- gspread (https://github.com/burnash/gspread)
+- `gspread <https://github.com/burnash/gspread>`_
 
 To install gspread:
 
@@ -11,7 +19,7 @@ To install gspread:
 
   pip install gspread
   
-- python-telegram-bot (https://github.com/python-telegram-bot/python-telegram-bot)
+- `python-telegram-bot <https://github.com/python-telegram-bot/python-telegram-bot>`_
 
 To install python-telegram-bot:
 
@@ -22,4 +30,4 @@ To install python-telegram-bot:
 =================
 Misc
 =================
-- No sharing of bot API TOKEN
+- Do not share bot API TOKEN
