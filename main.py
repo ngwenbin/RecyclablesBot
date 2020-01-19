@@ -94,8 +94,6 @@ def start(update, context):
             return REGISTER
 
 def recycle(update, context):
-    query = update.callback_query
-    bot = context.bot
     keyboard = [[InlineKeyboardButton("Papers", callback_data=str(ITEM_PAPERS))],
                 [InlineKeyboardButton("Electronics", callback_data=str(ITEM_ELECTRONICS))],
                 [InlineKeyboardButton("Clothes", callback_data=str(ITEM_CLOTHES))],
@@ -103,9 +101,7 @@ def recycle(update, context):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    bot.edit_message_text(
-        chat_id=query.message.chat_id,
-        message_id=query.message.message_id,
+    update.callback_query.edit_message_text(
         text="Please select the type of recyclables you want to recycle:",
         reply_markup=reply_markup
     )
@@ -113,8 +109,6 @@ def recycle(update, context):
     return RECYCLABLES
 
 def papers(update, context):
-    query = update.callback_query
-    bot = context.bot
     keyboard = [[InlineKeyboardButton("Less than 10KG", callback_data=str(PAPER1))],
                 [InlineKeyboardButton("20KG to 30KG", callback_data=str(PAPER2))],
                 [InlineKeyboardButton("30KG to 40KG", callback_data=str(PAPER3))],
@@ -123,9 +117,7 @@ def papers(update, context):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    bot.edit_message_text(
-        chat_id=query.message.chat_id,
-        message_id=query.message.message_id,
+    update.callback_query.edit_message_text(
         text="*Please select an estimated weight of your papers:*"\
              "\n\nNeed help in estimating the weight? Click [here](https://i.imgur.com/OvameYt.png)!",
         parse_mode='Markdown',
@@ -196,14 +188,10 @@ def failure(update, context):
     return STOPPING
 
 def electronics(update, context):
-    query = update.callback_query
-    bot = context.bot
     keyboard = [[InlineKeyboardButton("Back", callback_data=str(END))]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    bot.edit_message_text(
-        chat_id=query.message.chat_id,
-        message_id=query.message.message_id,
+    update.callback_query.edit_message_text(
         text="WIP!",
         reply_markup=reply_markup
     )
@@ -211,44 +199,32 @@ def electronics(update, context):
     return END
 
 def clothes(update, context):
-    query = update.callback_query
-    bot = context.bot
-    bot.edit_message_text(
-        chat_id=query.message.chat_id,
-        message_id=query.message.message_id,
-        text="WIP!"
-    )
+    keyboard = [[InlineKeyboardButton("Back", callback_data=str(END))]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
 
+    update.callback_query.edit_message_text(
+        text="WIP!",
+        reply_markup=reply_markup
+    )
+    
     return END
 
 def info(update, context):
-    query = update.callback_query
-    bot = context.bot
-    bot.edit_message_text(
-        chat_id=query.message.chat_id,
-        message_id=query.message.message_id,
+    update.callback_query.edit_message_text(
         text="Info placeholder!"
     )
 
     return END
 
 def helps(update, context):
-    query = update.callback_query
-    bot = context.bot
-    bot.edit_message_text(
-        chat_id=query.message.chat_id,
-        message_id=query.message.message_id,
+    update.callback_query.edit_message_text(
         text="WIP!"
     )
 
     return END
 
 def register(update, context):
-    bot = context.bot
-    query = update.callback_query
-    bot.edit_message_text(
-        chat_id=query.message.chat_id,
-        message_id=query.message.message_id,
+    update.callback_query.edit_message_text(
         text="Okay, please tell me your postal code in six digits."\
              "\nFor example: 520123"\
              "\n\nType /cancel to cancel"
@@ -318,13 +294,9 @@ def unit(update, context):
         return end_reg(update, context)
 
 def end(update, context):
-    query = update.callback_query
-    bot = context.bot
     user_data = context.user_data
     user_data.clear()
-    bot.edit_message_text(
-        chat_id=query.message.chat_id,
-        message_id=query.message.message_id,
+    update.callback_query.edit_message_text(
         text="Alright! Thank you and have a nice day!"
     )
     return END
@@ -338,11 +310,7 @@ def end_reg(update, context):
     return END
 
 def end_nested(update, context):
-    query = update.callback_query
-    bot = context.bot
-    bot.edit_message_text(
-        chat_id=query.message.chat_id,
-        message_id=query.message.message_id,
+    update.callback_query.edit_message_text(
         text="Alright! Thank you and have a nice day!"
     )
     return STOPPING
@@ -354,6 +322,14 @@ def end_recycle(update, context):
     return END
 
 def end_papers(update, context):
+    recycle(update, context)
+    return END
+
+def end_clothes(update, context):
+    recycle(update, context)
+    return END
+
+def end_electronics(update, context):
     recycle(update, context)
     return END
 
@@ -400,7 +376,7 @@ def main():
         },        
 
         fallbacks=[
-            CallbackQueryHandler(recycle, pattern='^' + str(END) + '$'),
+            CallbackQueryHandler(end_electronics, pattern='^' + str(END) + '$'),
             CommandHandler('stop', end_nested)
         ],
 
@@ -419,7 +395,7 @@ def main():
         },        
 
         fallbacks=[
-            CallbackQueryHandler(recycle, pattern='^' + str(END) + '$'),
+            CallbackQueryHandler(end_clothes, pattern='^' + str(END) + '$'),
             CommandHandler('stop', end_nested)
         ],
 
