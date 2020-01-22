@@ -4,6 +4,8 @@ Singapore 1st Karang Guni hailing Bot
 
 * Requirements
 
+* How to be Pythonic
+
 * Misc
 
 
