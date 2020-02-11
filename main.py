@@ -41,22 +41,22 @@ INFOS, ABOUT, PRIVACY, END_INFO = map(chr, range(16, 20))
 # Second level states
 RECYCLABLES, ITEM_PAPERS, ITEM_ELECTRONICS, ITEM_CLOTHES = map(chr, range(20, 24))
 # Third level states
-WEIGHT, CONFIRM, SELECT_DATE, CLEAR_ITEM, CLEAR, END_CLEAR = map(chr, range(24, 30))
+WEIGHT, CONFIRM, SELECT_DATE, CLEAR_ITEM, CLEAR, END_CLEAR, END_ELECTRONICS = map(chr, range(24, 31))
 # Fourth level states
-DATES, TIMING, END_TIME = map(chr, range(30, 33))
+DATES, TIMING, END_TIME = map(chr, range(31, 34))
 # Fifth level states
-CONFIRM_ORDER, CHECKOUT = map(chr, range(33, 35))
+CONFIRM_ORDER, CHECKOUT = map(chr, range(34, 36))
 # Constants
 (START_OVER, PAPERS, CLOTHES, DAYS, TIMES, BASKET,
- ITEM_TYPE, ROW, FULL_ADDRESS) = map(chr, range(35,44))
+ ITEM_TYPE, ROW, FULL_ADDRESS) = map(chr, range(36,45))
 # Meta states
-STOPPING = map(chr, range(44,45))
+STOPPING = map(chr, range(45,46))
 # Paper meta states
 PAPER1, PAPER2, PAPER3, PAPER4, PAPER5 = map(chr, range(5))
 # Clothes meta states
-CLOTHES1, CLOTHES2, CLOTHES3, CLOTHES4, CLOTHES5 = map(chr, range(5, 10))
+CLOTHES1, CLOTHES2, CLOTHES3, CLOTHES4, CLOTHES5 = map(chr, range(6, 11))
 # Choices meta states
-CHOICE1, CHOICE2 = map(chr, range(10,12))
+CHOICE1, CHOICE2= map(chr, range(11, 13))
 
 END = ConversationHandler.END
 
@@ -221,14 +221,21 @@ def clothes(update, context):
     return WEIGHT
 
 def electronics(update, context):
-    keyboard = [[InlineKeyboardButton("« Back", callback_data=str(END))]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.callback_query.answer(
+        text="Electronic recycling will be done via google forms."\
+             "\n\n***Do note that electronics recycling requests are processed manually",
+        show_alert=True)
+    keyboard = InlineKeyboardButton(" « Back", callback_data=str(END))
+    reply_markup = InlineKeyboardMarkup.from_button(keyboard)
 
     update.callback_query.edit_message_text(
-        text="WIP!",
-        reply_markup=reply_markup
+        text=("Link to the form: "\
+             "https://forms.google.com/e_waste"),
+        parse_mode='Markdown',
+        reply_markup=reply_markup,
+        disable_web_page_preview=True
     )
-    return END
+    return END_ELECTRONICS
 
 def _item_text(item):
     x = 0
@@ -796,7 +803,9 @@ def main():
         entry_points=[CallbackQueryHandler(electronics, pattern='^' + str(ITEM_ELECTRONICS) + '$')],
 
         states={
-
+            END_ELECTRONICS: [
+                CallbackQueryHandler(electronics, pattern='^' + str(END) + '$')
+            ]
         },
 
         fallbacks=[
@@ -809,6 +818,7 @@ def main():
             END: RECYCLABLES,
         }
     )
+
     # Second level (Item selection)
     helps_level = ConversationHandler(
         entry_points=[CallbackQueryHandler(helps, pattern='^' + str(HELP) + '$')],
