@@ -223,7 +223,7 @@ def clothes(update, context):
 def electronics(update, context):
     update.callback_query.answer(
         text="Electronic recycling will be done via google forms."\
-             "\n\n***Do note that electronics recycling requests are processed manually",
+             "\n\nDo note that electronics recycling requests are processed manually",
         show_alert=True)
     keyboard = InlineKeyboardButton(" « Back", callback_data=str(END))
     reply_markup = InlineKeyboardMarkup.from_button(keyboard)
@@ -231,7 +231,6 @@ def electronics(update, context):
     update.callback_query.edit_message_text(
         text=("Link to the form: "\
              "https://forms.google.com/e_waste"),
-        parse_mode='Markdown',
         reply_markup=reply_markup,
         disable_web_page_preview=True
     )
@@ -804,12 +803,11 @@ def main():
 
         states={
             END_ELECTRONICS: [
-                CallbackQueryHandler(electronics, pattern='^' + str(END) + '$')
+                CallbackQueryHandler(end_third, pattern='^' + str(END) + '$')
             ]
         },
 
         fallbacks=[
-            CallbackQueryHandler(end_third, pattern='^' + str(END) + '$'),
             CommandHandler('cancel', end_nested)
         ],
 
