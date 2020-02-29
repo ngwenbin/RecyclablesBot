@@ -220,17 +220,32 @@ def clothes(update, context):
     )
     return WEIGHT
 
+# To generate custom link for electronics
+def get_link(name, address):
+    link = 'https://docs.google.com/forms/d/e/1FAIpQLSe0HciAG8IvZtwIdO4qHvfJwhEdul7MG7UiNgo54wj4dNaW2w/viewform?usp=pp_url'\
+        '&entry.1325814690=&entry.1717383728='
+    link = link.replace('1325814690=', '1325814690=' + name)
+    link = link.replace('1717383728=', '1717383728=' + address)
+    return link
+
 def electronics(update, context):
+    name= str(update.effective_user.first_name)
+    row = context.user_data[ROW]
+    values = sheet.range("D{0}:F{1}".format(row, row))
+    address = ""
+    for cell in values:
+        address += ("{}\n".format(cell.value))
     update.callback_query.answer(
         text="Electronic recycling will be done via google forms."\
-             "\n\nDo note that electronics recycling requests are processed manually",
+             "\n\nDo note that electronics recycling requests are processed manually.",
         show_alert=True)
     keyboard = InlineKeyboardButton(" « Back", callback_data=str(END))
     reply_markup = InlineKeyboardMarkup.from_button(keyboard)
 
     update.callback_query.edit_message_text(
-        text=("Link to the form: "\
-             "https://forms.google.com/e_waste"),
+        text=("Please in the form in [this link](" + get_link(name, address) + ") to receive a quotation."),
+            # "https://forms.google.com/e_waste"),
+        parse_mode='Markdown',
         reply_markup=reply_markup,
         disable_web_page_preview=True
     )
