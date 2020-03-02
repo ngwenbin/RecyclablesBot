@@ -1,4 +1,4 @@
-import gspread, pprint, re, logging, telegram.bot, pricelist
+import gspread, re, logging, telegram.bot, pricelist
 from oauth2client.service_account import ServiceAccountCredentials
 from telegram import (InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup,
                     ReplyKeyboardRemove, KeyboardButton)
@@ -10,7 +10,7 @@ from telegram.ext import messagequeue as mq
 scope = ["https://spreadsheets.google.com/feeds","https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_name("remebot.json", scope)
 gc = gspread.authorize(creds)
-sheet = gc.open("remeBot Database").worksheet("Address")
+sheet = gc.open("Recyclables (Database)").worksheet("Address")
 
 class MQBot(telegram.bot.Bot):
 
@@ -52,11 +52,11 @@ CONFIRM_ORDER, CHECKOUT = map(chr, range(34, 36))
 # Meta states
 STOPPING = map(chr, range(45,46))
 # Paper meta states
-PAPER1, PAPER2, PAPER3, PAPER4, PAPER5 = map(chr, range(5))
+PAPER1, PAPER2, PAPER3, PAPER4 = map(chr, range(4))
 # Clothes meta states
-CLOTHES1, CLOTHES2, CLOTHES3, CLOTHES4, CLOTHES5 = map(chr, range(6, 11))
+CLOTHES1, CLOTHES2, CLOTHES3, CLOTHES4 = map(chr, range(4, 8))
 # Choices meta states
-CHOICE1, CHOICE2= map(chr, range(11, 13))
+CHOICE1, CHOICE2 = map(chr, range(8,10))
 
 END = ConversationHandler.END
 
@@ -90,20 +90,19 @@ def collection_format(user_data):
 
 # Main Defs
 def start(update, context):
-    main_text = "*remeBot* can help you to schedule recycling"\
-                "\ncollections conveniently."\
-                "\n\nWith remeBot, you can do your part in helping"\
-                "\nthe environment while improving the"\
-                "\nproductivity of local rag n' bone collectors."\
-                "\nIn addition to that, you can receive"\
-                "\nincentives for your recyclables! ☺️"\
+    main_text = "*Recyclables* can help you to schedule  "\
+                "recycling collections with a karang guni conveniently!"\
+                "\n\nWith *Recyclables*, you can help the environment "\
+                "\nwhile increasing the productivity "\
+                "of the collectors. In addition to that, you can receive"\
+                " incentives for your recyclables! ☺️"\
                 "\n\nHow can I help you?"
 
     register_text = "Oops! Looks like you are not registered with us."\
                     "\n\nIn order to use our service,"\
                     "\nI will require your residential address for registration purposes."\
                     "\n\nWould you like to proceed?"\
-                    "\n\nType /cancel to cancel."
+                    "\n\nType /cancel to exit to bot."
 
     basket_text = "\n\n_You still have item(s) in your basket.\nDon't forget!_"
 
@@ -137,10 +136,11 @@ def start(update, context):
     else:
         userids = str(update.effective_user.id)
         update.message.reply_text(
-            "*Hello " + str(update.message.from_user.first_name) +"!* 👋🏻 \nWelcome to remeBot!",
+            "*Hello " + str(update.message.from_user.first_name) +"!* 👋🏻 \nWelcome to Recyclables!",
             parse_mode="Markdown"
         )
         try:
+            gc.login()
             cells = sheet.find(userids)
             context.user_data[ROW] = cells.row
             update.message.reply_text(
@@ -161,12 +161,13 @@ def recycle(update, context):
     keyboard = [[InlineKeyboardButton("🗞  Papers ", callback_data=str(ITEM_PAPERS))],
                 [InlineKeyboardButton("👕  Clothes ", callback_data=str(ITEM_CLOTHES))],
                 [InlineKeyboardButton("📱  Electronics ", callback_data=str(ITEM_ELECTRONICS))],
-                [InlineKeyboardButton("« Back", callback_data=str(END))]
+                [InlineKeyboardButton("« Back to main menu", callback_data=str(END))]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     update.callback_query.edit_message_text(
-        text="Please select the type of recyclables\n you wish to recycle:",
+        text="Please select the type of recyclables\n you wish to recycle:"\
+                "\n\nType /cancel to exit to bot.",
         reply_markup=reply_markup
     )
     return RECYCLABLES
@@ -179,8 +180,7 @@ def papers(update, context):
                 [InlineKeyboardButton("20KG to 30KG", callback_data=str(PAPER2))],
                 [InlineKeyboardButton("30KG to 40KG", callback_data=str(PAPER3))],
                 [InlineKeyboardButton("40KG to 50KG", callback_data=str(PAPER4))],
-                [InlineKeyboardButton("More than 50KG", callback_data=str(PAPER5))],
-                [InlineKeyboardButton("« Back", callback_data=str(END))]
+                [InlineKeyboardButton("« Back to recyclables", callback_data=str(END))]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -188,8 +188,9 @@ def papers(update, context):
         text=("*Please select an estimated weight of your papers:*"\
                 "\n\nCurrent prices:\n"\
                 "_{}_"\
-                "\nNeed help in estimating the weight?\n"\
-                "Click [here](https://i.imgur.com/OvameYt.png)!".format(pricelist.price_point("papers",1,5))),
+                "\nNeed help in estimating the weight?"\
+                "\nClick [here](https://i.imgur.com/OvameYt.png)!"
+                "\n\nType /cancel to exit to bot.".format(pricelist.price_point("papers",1,5))),
         parse_mode='Markdown',
         reply_markup=reply_markup,
         disable_web_page_preview=True
@@ -198,14 +199,13 @@ def papers(update, context):
 
 def clothes(update, context):
     update.callback_query.answer(
-        text="Do ensure your clothes are relatively clean as they are meant to be reused not recycled.",
+        text="Do ensure your clothes are clean as they are meant to be reused not recycled.",
         show_alert=True)
     keyboard = [[InlineKeyboardButton("10KG to 20KG", callback_data=str(CLOTHES1))],
                 [InlineKeyboardButton("20KG to 30KG", callback_data=str(CLOTHES2))],
                 [InlineKeyboardButton("30KG to 40KG", callback_data=str(CLOTHES3))],
                 [InlineKeyboardButton("40KG to 50KG", callback_data=str(CLOTHES4))],
-                [InlineKeyboardButton("More than 50KG", callback_data=str(CLOTHES5))],
-                [InlineKeyboardButton("« Back", callback_data=str(END))]
+                [InlineKeyboardButton("« Back to recyclables", callback_data=str(END))]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -213,14 +213,15 @@ def clothes(update, context):
         text=("*Please select an estimated weight of your clothes:*"\
                 "\n\nCurrent estimated prices:\n"\
                 "_{}_"\
-                "\nNeed help in estimating the weight?\nClick [here](https://i.imgur.com/OvameYt.png)!".format(pricelist.price_point("clothes",1,5))),
+                "\nNeed help in estimating the weight?"\
+                "\nClick [here](https://i.imgur.com/OvameYt.png)!"\
+                "\n\nType /cancel to exit to bot.".format(pricelist.price_point("clothes",1,5))),
         parse_mode='Markdown',
         reply_markup=reply_markup,
         disable_web_page_preview=True
     )
     return WEIGHT
 
-# To generate custom link for electronics
 def get_link(name, address):
     link = 'https://docs.google.com/forms/d/e/1FAIpQLSe0HciAG8IvZtwIdO4qHvfJwhEdul7MG7UiNgo54wj4dNaW2w/viewform?usp=pp_url'\
         '&entry.1325814690=&entry.1717383728='
@@ -303,11 +304,11 @@ def item_basket(update, context):
 
         if re.match("Papers", itemtype):
             context.user_data[PAPERS] = itemtype
-            update.callback_query.answer(text="Papers added!")
+            update.callback_query.answer(text="Papers added!", show_alert=True)
 
         elif re.match("Clothes", itemtype):
             context.user_data[CLOTHES] = itemtype
-            update.callback_query.answer(text="Clothes added!")
+            update.callback_query.answer(text="Clothes added!", show_alert=True)
 
     keyboard = [[InlineKeyboardButton("🗓 Select date", callback_data=str(SELECT_DATE))],
                 [InlineKeyboardButton("➕  Add item(s)", callback_data=str(END))],
@@ -317,7 +318,7 @@ def item_basket(update, context):
 
     update.callback_query.edit_message_text(
                     text=("*Your current recyclables:*\n{}"\
-                        "\n\nType /cancel to cancel".format(item_format(user_data))),
+                        "\n\nType /cancel to exit to bot.".format(item_format(user_data))),
                     parse_mode='Markdown',
                     reply_markup=reply_markup
     )
@@ -365,11 +366,12 @@ def date_selection(update, context):
                     [InlineKeyboardButton("Friday", callback_data='Friday'),
                     InlineKeyboardButton("Saturday", callback_data='Saturday')],
                     [InlineKeyboardButton("Sunday", callback_data='Sunday'),
-                    InlineKeyboardButton("« Back", callback_data=str(END))]
+                    InlineKeyboardButton("« Back to item basket", callback_data=str(END))]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         update.callback_query.edit_message_text(
-            text="*Please select your preferred date:*",
+            text="*Please select your preferred date:*"\
+                "\n\nType /cancel to exit to bot.",
             parse_mode='Markdown',
             reply_markup=reply_markup
         )
@@ -377,7 +379,7 @@ def date_selection(update, context):
 
     else:
         update.callback_query.answer(
-            text="You cannot proceed to select date"
+            text="You cannot proceed to select date"\
                     " with nothing in your basket!"\
                     "\n\nPlease add items into your basket.",
             show_alert=True
@@ -392,12 +394,13 @@ def time_selection(update, context):
         context.user_data[START_OVER] = True
     keyboard = [[InlineKeyboardButton("AM", callback_data=('9am to 12pm')),
                 InlineKeyboardButton("PM", callback_data=('2pm to 5pm'))],
-                [InlineKeyboardButton("« Back", callback_data=str(END_TIME))]
+                [InlineKeyboardButton("« Back to select date", callback_data=str(END_TIME))]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.edit_message_text(
         text="*Please select your preferred timeslot:*"\
-                "\nAM: 9am to 12pm\nPM: 2pm to 5pm",
+                "\nAM: 9am to 12pm\nPM: 2pm to 5pm"\
+                "\n\nType /cancel to exit to bot.",
         parse_mode='Markdown',
         reply_markup=reply_markup
     )
@@ -410,6 +413,8 @@ def basket_confirm(update, context):
     user_data[TIMES] = times
     days = user_data[DAYS]
     row = user_data[ROW]
+    if creds.access_token_expired:
+            gc.login()
     values = sheet.range("D{0}:F{1}".format(row, row))
     text_address =''
 
@@ -423,9 +428,9 @@ def basket_confirm(update, context):
                                                                 text_address,
                                                                 days,
                                                                 times))
-    end_text = "\n\nType /cancel to cancel"
+    end_text = "\n\nType /cancel to exit to bot."
     keyboard = [[InlineKeyboardButton("🛒  Checkout", callback_data=str(CHECKOUT)),
-                InlineKeyboardButton("Back", callback_data=str(END))]
+                InlineKeyboardButton("« Back to select time", callback_data=str(END))]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.edit_message_text(
@@ -438,7 +443,9 @@ def basket_confirm(update, context):
 
 def success(update, context):
     user_data = context.user_data
-    sheet2 = gc.open("remeBot Database").worksheet("Orders")
+    if creds.access_token_expired:
+        gc.login()
+    sheet2 = gc.open("Recyclables (Database)").worksheet("Orders")
     order_number = sheet2.acell('C3').value
     userids = str(update.effective_user.id)
     items = item_format(user_data)
@@ -457,14 +464,14 @@ def success(update, context):
         text=header_text + order_text + item_text + collection_add + collection_detail + end_text,
         parse_mode="Markdown"
     )
-    #"""
+    """
     #this is for order message notification
     bot = context.bot
     groupchat="-351944461"
     bot.send_message(chat_id=groupchat,
                      parse_mode="Markdown",
                      text=order_text+collection_add+collection_detail)
-    #"""
+    """
     sheet2.append_row([order_number, userids, items, days, times],value_input_option="RAW")
     return STOPPING
 
@@ -688,7 +695,7 @@ def main():
     # global throughput to 29 messages per 1 second
     q = mq.MessageQueue(all_burst_limit=29, all_time_limit_ms=1000)
     request = Request(con_pool_size=8)
-    token = '945909213:AAHynjzuKmbJA2f_IoRmUJsSQG2QGr8077U'
+    token = '1068793031:AAHJdDT21UGx7eommP-WTP0ozX5jdmt9or4'
     mainBot = MQBot(token, request=request, mqueue=q)
     updater = Updater(bot=mainBot, use_context=True)
     dp = updater.dispatcher
@@ -750,11 +757,10 @@ def main():
 
         states={
             WEIGHT: [
-                CallbackQueryHandler(item_basket, pattern='^{0}$|^{1}$|^{2}$|^{3}$|^{4}$'.format(str(PAPER1),
+                CallbackQueryHandler(item_basket, pattern='^{0}$|^{1}$|^{2}$|^{3}$'.format(str(PAPER1),
                                                                                                 str(PAPER2),
                                                                                                 str(PAPER3),
-                                                                                                str(PAPER4),
-                                                                                                str(PAPER5)))
+                                                                                                str(PAPER4)))
             ],
             CONFIRM: [
                 select_date_level,
@@ -784,11 +790,10 @@ def main():
 
         states={
             WEIGHT: [
-                CallbackQueryHandler(item_basket, pattern='^{0}$|^{1}$|^{2}$|^{3}$|^{4}$'.format(str(CLOTHES1),
+                CallbackQueryHandler(item_basket, pattern='^{0}$|^{1}$|^{2}$|^{3}$'.format(str(CLOTHES1),
                                                                                                 str(CLOTHES2),
                                                                                                 str(CLOTHES3),
-                                                                                                str(CLOTHES4),
-                                                                                                str(CLOTHES5)))
+                                                                                                str(CLOTHES4)))
             ],
             CONFIRM: [
                 select_date_level,
@@ -823,6 +828,7 @@ def main():
         },
 
         fallbacks=[
+            CallbackQueryHandler(end_third, pattern='^' + str(END) + '$'),
             CommandHandler('cancel', end_nested)
         ],
 
@@ -831,7 +837,6 @@ def main():
             END: RECYCLABLES,
         }
     )
-
     # Second level (Item selection)
     helps_level = ConversationHandler(
         entry_points=[CallbackQueryHandler(helps, pattern='^' + str(HELP) + '$')],
@@ -936,7 +941,6 @@ def main():
         fallbacks=[CommandHandler('cancel', cancel)],
     )
     conv_handler.states[RECYCLABLES, INFOS, HELPS] = conv_handler.states[MAIN_MENU]
-    #conv_handler.states[ENDS] = conv_handler.states[REGISTER]
     conv_handler.states[STOPPING] = conv_handler.entry_points
     dp.add_handler(conv_handler)
     dp.add_error_handler(error)
