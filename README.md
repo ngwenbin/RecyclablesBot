@@ -1,10 +1,8 @@
-# remeBot
+# Recyclables
 Singapore 1st Karang Guni hailing Bot
 ## Table of contents
 
 * Requirements
-
-* How to be Pythonic
 
 * Misc
 
