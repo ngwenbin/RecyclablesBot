@@ -1,4 +1,4 @@
-import gspread, re, logging, telegram.bot, pricelist
+import gspread, re, logging, telegram.bot, pricelist, os
 from oauth2client.service_account import ServiceAccountCredentials
 from telegram import (InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup,
                     ReplyKeyboardRemove, KeyboardButton)
@@ -8,7 +8,7 @@ from telegram.ext import messagequeue as mq
 
 ## gspread stuffs ##
 scope = ["https://spreadsheets.google.com/feeds","https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name("remebot.json", scope)
+creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
 gc = gspread.authorize(creds)
 sheet = gc.open("Recyclables (Database)").worksheet("Address")
 
@@ -695,8 +695,10 @@ def main():
     # global throughput to 29 messages per 1 second
     q = mq.MessageQueue(all_burst_limit=29, all_time_limit_ms=1000)
     request = Request(con_pool_size=8)
-    token = '1068793031:AAHJdDT21UGx7eommP-WTP0ozX5jdmt9or4'
-    mainBot = MQBot(token, request=request, mqueue=q)
+    TOKEN = '1068793031:AAHJdDT21UGx7eommP-WTP0ozX5jdmt9or4'
+    NAME = "recyclables"
+    PORT = os.environ.get('PORT')
+    mainBot = MQBot(TOKEN, request=request, mqueue=q)
     updater = Updater(bot=mainBot, use_context=True)
     dp = updater.dispatcher
 
@@ -944,7 +946,12 @@ def main():
     conv_handler.states[STOPPING] = conv_handler.entry_points
     dp.add_handler(conv_handler)
     dp.add_error_handler(error)
-    updater.start_polling()
+
+    # Start the webhook
+    updater.start_webhook(listen="0.0.0.0",
+                          port=int(PORT),
+                          url_path=TOKEN)
+    updater.bot.setWebhook("https://{}.herokuapp.com/{}".format(NAME, TOKEN))
     updater.idle()
 
 if __name__ == '__main__':
