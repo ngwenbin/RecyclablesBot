@@ -244,7 +244,7 @@ def electronics(update, context):
     reply_markup = InlineKeyboardMarkup.from_button(keyboard)
 
     update.callback_query.edit_message_text(
-        text=("Please in the form in [this link](" + get_link(name, address) + ") to receive a quotation."),
+        text=("Please fill in the form in [this link](" + get_link(name, address) + ") to receive a quotation."),
             # "https://forms.google.com/e_waste"),
         parse_mode='Markdown',
         reply_markup=reply_markup,
