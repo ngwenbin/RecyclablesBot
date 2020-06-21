@@ -5,12 +5,20 @@ from telegram import (InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardM
 from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters,
                         ConversationHandler, CallbackQueryHandler)
 from telegram.ext import messagequeue as mq
+from datetime import date
+from datetime import timedelta
+from datetime import datetime
 
 ## gspread stuffs ##
 scope = ["https://spreadsheets.google.com/feeds","https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
 gc = gspread.authorize(creds)
 sheet = gc.open("Recyclables (Database)").worksheet("Address")
+sheet2 = gc.open("Recyclables (Database)").worksheet("Orders")
+this_friday = sheet2.acell('G1').value
+next_friday = sheet2.acell('G2').value
+this_saturday = sheet2.acell('I1').value
+next_saturday = sheet2.acell('I2').value
 
 class MQBot(telegram.bot.Bot):
 
@@ -30,6 +38,8 @@ class MQBot(telegram.bot.Bot):
     def send_message(self, *args, **kwargs):
         return super(MQBot, self).send_message(*args, **kwargs)
 
+# ------------- State management -------------
+
 # First level states
 REGISTER, REGISTERYES, REGISTERNO, MAIN_MENU, RECYCLE, INFO, HELP,  = map(chr, range(7))
 # Sub second level state
@@ -43,7 +53,7 @@ RECYCLABLES, ITEM_PAPERS, ITEM_ELECTRONICS, ITEM_CLOTHES = map(chr, range(20, 24
 # Third level states
 WEIGHT, CONFIRM, SELECT_DATE, CLEAR_ITEM, CLEAR, END_CLEAR, END_ELECTRONICS = map(chr, range(24, 31))
 # Fourth level states
-DATES, TIMING, END_TIME = map(chr, range(31, 34))
+DATES, AGREEMENT, END_AGREEMENT = map(chr, range(31, 34))
 # Fifth level states
 CONFIRM_ORDER, CHECKOUT = map(chr, range(34, 36))
 # Constants
@@ -66,7 +76,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
-#Cache formatting
+# Formatting of user data cache
 def address_format(user_data):
     data = list()
     for key, value in user_data.items():
@@ -88,21 +98,22 @@ def collection_format(user_data):
             collect.append('{}'.format(value))
     return "\n".join(collect)
 
-# Main Defs
+# Main functions
 def start(update, context):
-    main_text = "*Recyclables* can help you to schedule  "\
+    main_text = "*Recyclables* can help you to schedule "\
                 "recycling collections with a karang guni conveniently!"\
-                "\n\nWith *Recyclables*, you can help the environment "\
-                "\nwhile increasing the productivity "\
-                "of the collectors. In addition to that, you can receive"\
-                " incentives for your recyclables! ☺️"\
+                "\n\nThrough *Recyclables*, you can help the environment "\
+                "while increasing the productivity "\
+                "of our local karung gunis."\
+                "\nIn addition to that, you can receive "\
+                "incentives for your recyclables! ☺️"\
                 "\n\nHow can I help you?"
 
     register_text = "Oops! Looks like you are not registered with us."\
-                    "\n\nIn order to use our service,"\
+                    "\n\nIn order to use Recyclables,"\
                     "\nI will require your residential address for registration purposes."\
                     "\n\nWould you like to proceed?"\
-                    "\n\nType /cancel to exit to bot."
+                    "\n\nType /cancel to exit the bot."
 
     basket_text = "\n\n_You still have item(s) in your basket.\nDon't forget!_"
 
@@ -167,7 +178,7 @@ def recycle(update, context):
 
     update.callback_query.edit_message_text(
         text="Please select the type of recyclables\n you wish to recycle:"\
-                "\n\nType /cancel to exit to bot.",
+                "\n\nType /cancel to exit the bot.",
         reply_markup=reply_markup
     )
     return RECYCLABLES
@@ -187,10 +198,10 @@ def papers(update, context):
     update.callback_query.edit_message_text(
         text=("*Please select an estimated weight of your papers:*"\
                 "\n\nCurrent prices:\n"\
-                "_{}_"\
+                "_$0.03 to $0.05 per KG_"\
                 "\nNeed help in estimating the weight?"\
-                "\nClick [here](https://i.imgur.com/OvameYt.png)!"
-                "\n\nType /cancel to exit to bot.".format(pricelist.price_point("papers",1,5))),
+                "\nClick [here](https://i.imgur.com/6zd9K5P.png)!"
+                "\n\nType /cancel to exit the bot."),
         parse_mode='Markdown',
         reply_markup=reply_markup,
         disable_web_page_preview=True
@@ -212,10 +223,8 @@ def clothes(update, context):
     update.callback_query.edit_message_text(
         text=("*Please select an estimated weight of your clothes:*"\
                 "\n\nCurrent estimated prices:\n"\
-                "_{}_"\
-                "\nNeed help in estimating the weight?"\
-                "\nClick [here](https://i.imgur.com/OvameYt.png)!"\
-                "\n\nType /cancel to exit to bot.".format(pricelist.price_point("clothes",1,5))),
+                "_$0.08 to $0.10 per KG_"\
+                "\n\nType /cancel to exit the bot."),
         parse_mode='Markdown',
         reply_markup=reply_markup,
         disable_web_page_preview=True
@@ -277,16 +286,12 @@ def _item_text(item):
 
     if x > 0:
         text_item = ('Papers ({0}KG to {1}KG)'\
-                    '\n${2:.2f} to ${3:.2f}'.format((x)*10,
-                                                    (x+1)*10,
-                                                    (x)*10*pricelist.paper_price,
-                                                    (x+1)*10*pricelist.paper_price))
+                     '\n$0.03 to $0.05 per KG'.format((x)*10,
+                                                    (x+1)*10))
     elif y > 0:
         text_item = ('Clothes ({0}KG to {1}KG)'\
-                    '\n${2:.2f} to ${3:.2f}'.format((y)*10,
-                                                    (y+1)*10,
-                                                    (y)*10*pricelist.clothes_price,
-                                                    (y+1)*10*pricelist.clothes_price))
+                     '\n$0.08 to $0.10 per KG'.format((y)*10,
+                                                    (y+1)*10))
     return text_item
 
 def item_basket(update, context):
@@ -318,7 +323,7 @@ def item_basket(update, context):
 
     update.callback_query.edit_message_text(
                     text=("*Your current recyclables:*\n{}"\
-                        "\n\nType /cancel to exit to bot.".format(item_format(user_data))),
+                        "\n\nType /cancel to exit the bot.".format(item_format(user_data))),
                     parse_mode='Markdown',
                     reply_markup=reply_markup
     )
@@ -356,22 +361,61 @@ def clear_confirm(update, context):
     )
     return CLEAR
 
+def date_filter(day):
+    today = date.today()
+    current_limits = 20
+
+    if day == 6:
+        dates = today + timedelta(6 - (today.weekday()) % 7)
+        if today >= dates: # Check if today is the week's day or past the week's day
+            dates = today + timedelta(days=day-today.weekday(), weeks=1)
+
+    else:
+        dates = today + timedelta(days=day-today.weekday() %7)
+        if today >= dates or (int(this_friday) >= current_limits and day == 4) or (int(this_saturday) >= current_limits and day == 5):
+            dates = today + timedelta(days=day-today.weekday(), weeks=1)
+
+
+    return dates.strftime("%A (%d/%m/%y)")
+
+    # Mon to Sun (0 to 6)
+
 def date_selection(update, context):
     context.user_data[START_OVER] = True
+    current_limits = 20
     if context.user_data.get(BASKET):
-        keyboard = [[InlineKeyboardButton("Monday", callback_data='Monday'),
-                    InlineKeyboardButton("Tuesday", callback_data='Tuesday')],
-                    [InlineKeyboardButton("Wednesday", callback_data='Wednesday'),
-                    InlineKeyboardButton("Thursday", callback_data='Thursday')],
-                    [InlineKeyboardButton("Friday", callback_data='Friday'),
-                    InlineKeyboardButton("Saturday", callback_data='Saturday')],
-                    [InlineKeyboardButton("Sunday", callback_data='Sunday'),
+        keyboard = [#[InlineKeyboardButton("Monday", callback_data='Monday'),
+                    #InlineKeyboardButton("Tuesday", callback_data='Tuesday')],
+                    #[InlineKeyboardButton("Wednesday", callback_data='Wednesday'),
+                    #InlineKeyboardButton("Thursday", callback_data='Thursday')],
+                    [InlineKeyboardButton(date_filter(4), callback_data='4'),
+                    InlineKeyboardButton(date_filter(5), callback_data='5')],
+                    [#InlineKeyboardButton("Sunday", callback_data='Sunday'),
                     InlineKeyboardButton("« Back to item basket", callback_data=str(END))]
         ]
+        text = "*Please select your preferred date:*"\
+                "\n\nType /cancel to exit the bot."
+
+        if int(next_friday) >= current_limits:
+            keyboard = [[InlineKeyboardButton(date_filter(5), callback_data='5'),
+                        InlineKeyboardButton("« Back to item basket", callback_data=str(END))]
+            ]
+
+        if int(next_saturday) >= current_limits:
+            keyboard = [[InlineKeyboardButton(date_filter(4), callback_data='4'),
+                        InlineKeyboardButton("« Back to item basket", callback_data=str(END))]
+            ]
+
+        if int(next_friday) >= current_limits and int(next_saturday) >= current_limits:
+            text = "*Sorry, our collection slots are full, please try again next week!*"\
+                    "\n\nType /cancel to exit the bot."
+            keyboard = [InlineKeyboardButton("« Back to item basket", callback_data=str(END))]
+
+
+
         reply_markup = InlineKeyboardMarkup(keyboard)
         update.callback_query.edit_message_text(
-            text="*Please select your preferred date:*"\
-                "\n\nType /cancel to exit to bot.",
+            text=text,
             parse_mode='Markdown',
             reply_markup=reply_markup
         )
@@ -386,31 +430,32 @@ def date_selection(update, context):
         )
         return END
 
-def time_selection(update, context):
+def agreement(update, context):
     if context.user_data.get(START_OVER):
         days = update.callback_query.data
-        context.user_data[DAYS] = days
+        context.user_data[DAYS] = date_filter(int(days))
     else:
         context.user_data[START_OVER] = True
-    keyboard = [[InlineKeyboardButton("AM", callback_data=('9am to 12pm')),
-                InlineKeyboardButton("PM", callback_data=('2pm to 5pm'))],
-                [InlineKeyboardButton("« Back to select date", callback_data=str(END_TIME))]
+    keyboard = [[InlineKeyboardButton("Yes, I agree", callback_data=('agree')),
+                #InlineKeyboardButton("PM", callback_data=('2pm to 5pm'))],
+                InlineKeyboardButton("« Back to select date", callback_data=str(END_AGREEMENT))]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.edit_message_text(
-        text="*Please select your preferred timeslot:*"\
-                "\nAM: 9am to 12pm\nPM: 2pm to 5pm"\
-                "\n\nType /cancel to exit to bot.",
+        text="*Please do ensure your recyclables are resonably accurate to the weight indicated*"\
+                "\nas our karung guni has to cover his operation expenses."\
+                "\nCollection times will be between 9am to 5pm."
+                "\n\nType /cancel to exit the bot.",
         parse_mode='Markdown',
         reply_markup=reply_markup
     )
-    return TIMING
+    return AGREEMENT
 
 def basket_confirm(update, context):
     user_data = context.user_data
     user_data[START_OVER] = False
-    times = update.callback_query.data
-    user_data[TIMES] = times
+    #times = update.callback_query.data
+    #user_data[TIMES] = times
     days = user_data[DAYS]
     row = user_data[ROW]
     if creds.access_token_expired:
@@ -424,13 +469,13 @@ def basket_confirm(update, context):
     text = ("*Your current order is as follows:*\n"\
             "Item basket:\n_{0}_"\
             "\n\nCollection address:\n{1}"\
-            "\nCollection details:\n{2}\n{3}".format(item_format(user_data),
-                                                                text_address,
-                                                                days,
-                                                                times))
-    end_text = "\n\nType /cancel to exit to bot."
+            "\nCollection details:\n{2}"\
+            "\n9am to 5pm".format(item_format(user_data),
+                                  text_address,
+                                  days))
+    end_text = "\n\nType /cancel to exit the bot."
     keyboard = [[InlineKeyboardButton("🛒  Checkout", callback_data=str(CHECKOUT)),
-                InlineKeyboardButton("« Back to select time", callback_data=str(END))]
+                InlineKeyboardButton("« Back", callback_data=str(END))]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.edit_message_text(
@@ -443,14 +488,12 @@ def basket_confirm(update, context):
 
 def success(update, context):
     user_data = context.user_data
-    if creds.access_token_expired:
-        gc.login()
-    sheet2 = gc.open("Recyclables (Database)").worksheet("Orders")
+
     order_number = sheet2.acell('C3').value
     userids = str(update.effective_user.id)
     items = item_format(user_data)
     text_address = user_data[FULL_ADDRESS]
-    times = user_data[TIMES]
+    #times = user_data[TIMES]
     days = user_data[DAYS]
 
     header_text = ("*Your order has been confirmed!\n\n* 👍🏻")
@@ -458,7 +501,7 @@ def success(update, context):
                     "\n-------------------------".format(order_number))
     item_text = ("\nRecyclables to be collected:\n{}".format(items))
     collection_add = ("\n\nCollection address:\n{}".format(text_address))
-    collection_detail = ("\nCollection details:\n{0}\n{1}".format(days, times))
+    collection_detail = ("\nCollection details:\n{0}".format(days))
     end_text = "\n\nSee FAQ should you need any help"
     update.callback_query.edit_message_text(
         text=header_text + order_text + item_text + collection_add + collection_detail + end_text,
@@ -472,7 +515,8 @@ def success(update, context):
                      parse_mode="Markdown",
                      text=order_text+collection_add+collection_detail)
     """
-    sheet2.append_row([order_number, userids, items, days, times],value_input_option="RAW")
+    sheet2.append_row([order_number, userids, items, days],value_input_option="RAW")
+    user_data.clear()
     return STOPPING
 
 def failure(update, context):
@@ -556,8 +600,8 @@ def change_address(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     update.callback_query.edit_message_text(
-        text="🚨 Proceeding will reset your registration details"\
-                "\nand you will have to register again to use our services."\
+        text="🚨 Proceeding will reset your registration details "\
+                "and you will have to register again to use our services."\
                 "\n\nDo you wish to proceed?",
         reply_markup=reply_markup
     )
@@ -577,7 +621,8 @@ def proceed(update, context):
 def register(update, context):
     update.callback_query.edit_message_text(
         text="Okay, please tell me your postal code in six digits."\
-                "\nFor example: 520123"\
+                "\nClick [here](https://file.io/CZ6WWZnf) to see the list of eligible postal codes."
+                "\n\nFor example: 520123"\
                 "\n\nType /cancel to cancel"
     )
     return POSTAL
@@ -585,6 +630,9 @@ def register(update, context):
 def postal(update, context):
     postal = update.message.text
     invalid_text="Invalid postal code, please try again."
+    unavailable_text = "Sorry! Our services are currently not available in your region!"\
+                        "\nClick [here](https://file.io/CZ6WWZnf) to see the list of eligible postal codes."\
+                        "\n\nType /cancel to cancel"
     text="Please tell me your address: \n(Block number/ Street number/ Building number)"\
             "\nFor example: BLK 123 Orchard street 1"\
             "\n\nType /cancel to cancel"
@@ -593,6 +641,10 @@ def postal(update, context):
         if 0<=postal<=999999:
             context.user_data['Postal code'] = postal
             update.message.reply_text(text=text)
+            return ADDRESS
+
+        elif 0<=postal<=999999:
+            update.message.reply_text(text=unavailable_text)
             return ADDRESS
 
         else:
@@ -648,8 +700,16 @@ def end(update, context):
     return END
 
 def cancel(update, context):
+    user_data = context.user_data
+    user_data.clear()
     update.message.reply_text(
         text="Alright! Thank you and have a nice day!"
+    )
+    return END
+
+def cancel_slots(update, context):
+    update.message.reply_text(
+        text="Sorry! We are fully booked this week!"
     )
     return END
 
@@ -683,7 +743,7 @@ def end_fourth(update, context):
     return END
 
 def end_fifth(update, context):
-    time_selection(update, context)
+    agreement(update, context)
     return END
 
 def error(update, context):
@@ -704,8 +764,7 @@ def main():
 
     # Fifth level (time + confirm)
     confirm_level = ConversationHandler(
-        entry_points=[CallbackQueryHandler(basket_confirm, pattern='^{0}$|^{1}$'.format(('9am to 12pm'),
-                                                                                        ('2pm to 5pm')))],
+        entry_points=[CallbackQueryHandler(basket_confirm, pattern='^{0}$'.format(('agree')))],
 
         states ={
             CONFIRM_ORDER: [
@@ -720,7 +779,7 @@ def main():
 
         map_to_parent={
             STOPPING: STOPPING,
-            END: TIMING,
+            END: AGREEMENT,
         }
     )
 
@@ -730,16 +789,16 @@ def main():
 
         states ={
             DATES: [
-                CallbackQueryHandler(time_selection, pattern='^{0}$|^{1}$|^{2}$|^{3}$|^{4}$|^{5}$|^{6}$'.format(('Monday'),
-                                                                                                                ('Tuesday'),
-                                                                                                                ('Wednesday'),
-                                                                                                                ('Thursday'),
-                                                                                                                ('Friday'),
-                                                                                                                ('Saturday'),
-                                                                                                                ('Sunday'))),
+                CallbackQueryHandler(agreement, pattern='^{0}$|^{1}$|^{2}$|^{3}$|^{4}$|^{5}$|^{6}$'.format(("0"),
+                                                                                                                ('1'),
+                                                                                                                ('2'),
+                                                                                                                ('3'),
+                                                                                                                ('4'),
+                                                                                                                ('5'),
+                                                                                                                ('6'))),
             ],
-            TIMING: [confirm_level,
-                    CallbackQueryHandler(date_selection, pattern='^' + str(END_TIME) + '$'),]
+            AGREEMENT: [confirm_level,
+                    CallbackQueryHandler(date_selection, pattern='^' + str(END_AGREEMENT) + '$'),]
         },
 
         fallbacks=[
