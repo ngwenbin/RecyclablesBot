@@ -511,7 +511,7 @@ def success(update, context):
 
     #this is for order message notification
     bot = context.bot
-    groupchat="-351944461"
+    groupchat="-1001427022537"
     bot.send_message(chat_id=groupchat,
                      parse_mode="Markdown",
                      text=order_text+collection_add+collection_detail)
@@ -1051,7 +1051,7 @@ def main():
                           url_path=TOKEN)
     updater.bot.setWebhook("https://{}.herokuapp.com/{}".format(NAME, TOKEN))
 
-    # # For local hosting ONLY
+    # For local hosting ONLY
     # updater.start_polling()
     # updater.idle()
 
