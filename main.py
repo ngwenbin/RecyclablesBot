@@ -444,7 +444,7 @@ def agreement(update, context):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.edit_message_text(
-        text="*Please do ensure your recyclables are resonably accurate to the weight indicated*."\
+        text="*Please do ensure your recyclables are reasonably accurate to the weight indicated*."\
                 "\nCollection times will be between 9am to 5pm."
                 "\n\nType /cancel to exit the bot.",
         parse_mode='Markdown',
