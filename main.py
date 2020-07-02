@@ -796,9 +796,10 @@ def main():
 
     # # For testing
     # TOKEN = '1053894250:AAHvggL1aCvs6j8UhfjK-buS61giffJ74qY' # Test bot token
-    # mainBot = MQBot(TOKEN, request=request, mqueue=q)
-    # updater = Updater(bot=mainBot, use_context=True)
-    # dp = updater.dispatcher
+
+    mainBot = MQBot(TOKEN, request=request, mqueue=q)
+    updater = Updater(bot=mainBot, use_context=True)
+    dp = updater.dispatcher
 
     # Fifth level (time + confirm)
     confirm_level = ConversationHandler(
