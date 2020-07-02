@@ -112,6 +112,9 @@ def start(update, context):
     register_text = "Oops! Looks like you are not registered with us."\
                     "\n\nIn order to use Recyclables,"\
                     "\nI will require your residential address for registration purposes."\
+                    "\n\n*🚨 Currently, we are only operating in:*"\
+                    "\nChoa Chu Kang"\
+                    "\nYew Tee"\
                     "\n\nWould you like to proceed?"\
                     "\n\nType /cancel to exit the bot."
 
@@ -164,7 +167,8 @@ def start(update, context):
         except gspread.exceptions.CellNotFound: #gspread exceptions
             update.message.reply_text(
                 text= register_text,
-                reply_markup=reg_markup
+                reply_markup=reg_markup,
+                parse_mode ="Markdown"
             )
             return REGISTER
 
@@ -371,7 +375,7 @@ def date_filter(day):
             dates = today + timedelta(days=day-today.weekday(), weeks=1)
 
     else:
-        dates = today + timedelta(days=day-today.weekday() %7)
+        dates = today + timedelta(days=day-today.weekday() % 7)
         if today >= dates or (int(this_friday) >= current_limits and day == 4) or (int(this_saturday) >= current_limits and day == 5):
             dates = today + timedelta(days=day-today.weekday(), weeks=1)
 
@@ -411,8 +415,6 @@ def date_selection(update, context):
                     "\n\nType /cancel to exit the bot."
             keyboard = [InlineKeyboardButton("« Back to item basket", callback_data=str(END))]
 
-
-
         reply_markup = InlineKeyboardMarkup(keyboard)
         update.callback_query.edit_message_text(
             text=text,
@@ -442,8 +444,7 @@ def agreement(update, context):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.edit_message_text(
-        text="*Please do ensure your recyclables are resonably accurate to the weight indicated*"\
-                "\nas our karung guni has to cover his operation expenses."\
+        text="*Please do ensure your recyclables are resonably accurate to the weight indicated*."\
                 "\nCollection times will be between 9am to 5pm."
                 "\n\nType /cancel to exit the bot.",
         parse_mode='Markdown',
@@ -496,26 +497,26 @@ def success(update, context):
     #times = user_data[TIMES]
     days = user_data[DAYS]
 
-    header_text = ("*Your order has been confirmed!\n\n* 👍🏻")
+    header_text = ("*Your order has been confirmed! 👍🏻\n\n*")
     order_text = ("*Order No #{}*"\
                     "\n-------------------------".format(order_number))
-    item_text = ("\nRecyclables to be collected:\n{}".format(items))
-    collection_add = ("\n\nCollection address:\n{}".format(text_address))
-    collection_detail = ("\nCollection details:\n{0}".format(days))
-    end_text = "\n\nSee FAQ should you need any help"
+    item_text = ("\n*Recyclables to be collected:*\n{}".format(items))
+    collection_add = ("\n\n*Collection address:*\n{}".format(text_address))
+    collection_detail = ("\n*Collection details:*\n{0}".format(days))
+    end_text = "\n\n_See FAQ should you need any help_"
     update.callback_query.edit_message_text(
         text=header_text + order_text + item_text + collection_add + collection_detail + end_text,
         parse_mode="Markdown"
     )
-    """
+
     #this is for order message notification
     bot = context.bot
     groupchat="-351944461"
     bot.send_message(chat_id=groupchat,
                      parse_mode="Markdown",
                      text=order_text+collection_add+collection_detail)
-    """
-    sheet2.append_row([order_number, userids, items, days],value_input_option="RAW")
+
+    sheet2.append_row([order_number, userids, items, days, text_address],value_input_option="RAW")
     user_data.clear()
     return STOPPING
 
@@ -535,7 +536,8 @@ def info(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     update.callback_query.edit_message_text(
-        text="Info",
+        text="What info would you like to see?"\
+            "\n\nType /cancel to exit the bot.",
         reply_markup=reply_markup
     )
     return INFOS
@@ -545,8 +547,10 @@ def info_privacy(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     update.callback_query.edit_message_text(
-        text="Lorem ipsum dolor sit amet, info privacy",
-        reply_markup=reply_markup
+        text="We treat your data very seriously. Do visit our [Facebook](https://www.facebook.com/recyclables.sg/) page for more information.",
+        reply_markup=reply_markup,
+        parse_mode='Markdown',
+        disable_web_page_preview=True
     )
     return INFOS
 
@@ -555,7 +559,9 @@ def info_about(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     update.callback_query.edit_message_text(
-        text="Lorem ipsum dolor sit amet, info about",
+        text="Hello! We are a team of 4 students from the National University of Singapore (NUS)."\
+             "\n\nWe seek to increase domestic recycling rates by enhancing the convenience of recycling,"\
+             "and reduce recycling waste contamination.",
         reply_markup=reply_markup
     )
     return INFOS
@@ -569,7 +575,8 @@ def helps(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     update.callback_query.edit_message_text(
-        text="Help info",
+        text="How can I help you? 😊"\
+             "\n\nType /cancel to exit the bot.",
         reply_markup=reply_markup
     )
     return HELPS
@@ -579,8 +586,10 @@ def helps_faq(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     update.callback_query.edit_message_text(
-        text="Lorem ipsum dolor sit amet, FAQ",
-        reply_markup=reply_markup
+        text="Our FAQ can be found on our [Facebook page](https://www.facebook.com/recyclables.sg/).",
+        reply_markup=reply_markup,
+        parse_mode='Markdown',
+        disable_web_page_preview=True
     )
     return HELPS
 
@@ -589,8 +598,13 @@ def helps_contact(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     update.callback_query.edit_message_text(
-        text="Lorem ipsum dolor sit amet, Contact",
-        reply_markup=reply_markup
+        text="Feel free to reach us at the following channels!"\
+             "\n\n*Email*: help@recyclables.sg"\
+             "\n*Instagram* : [@recyclables.sg](https://www.instagram.com/recyclables.sg/)"\
+             "\n*Facebook*: [recyclables.sg](https://www.facebook.com/recyclables.sg/)",
+        reply_markup=reply_markup,
+        parse_mode='Markdown',
+        disable_web_page_preview=True
     )
     return HELPS
 
@@ -614,45 +628,64 @@ def proceed(update, context):
     user_data = context.user_data
     user_data.clear()
     update.callback_query.edit_message_text(
-        text="Details are now reset. \n\nType /start to enter your new details!"
+        text="Reset completed. \n\nType /start to enter your new details!"
     )
     return STOPPING
 
 def register(update, context):
     update.callback_query.edit_message_text(
         text="Okay, please tell me your postal code in six digits."\
-                "\nClick [here](https://file.io/CZ6WWZnf) to see the list of eligible postal codes."
+                "\n\n*🚨 Currently, we are only operating in:*"\
+                "\nChoa Chu Kang"\
+                "\nYew Tee"\
                 "\n\nFor example: 520123"\
-                "\n\nType /cancel to cancel"
+                "\n\nType /cancel to cancel",
+        parse_mode='Markdown',
     )
     return POSTAL
 
 def postal(update, context):
     postal = update.message.text
-    invalid_text="Invalid postal code, please try again."
+    invalid_text="Invalid postal code, please try again."\
+                    "\n\nType /cancel to cancel"
     unavailable_text = "Sorry! Our services are currently not available in your region!"\
-                        "\nClick [here](https://file.io/CZ6WWZnf) to see the list of eligible postal codes."\
-                        "\n\nType /cancel to cancel"
-    text="Please tell me your address: \n(Block number/ Street number/ Building number)"\
+                        "\n\n*🚨 Currently, we are only operating in:*"\
+                        "\nChoa Chu Kang"\
+                        "\nYew Tee"\
+                        "\n\nFollow us on [Instagram](https://www.instagram.com/recyclables.sg/) or [Facebook](https://www.facebook.com/recyclables.sg/) for updates!"
+
+    text="Please tell me your address: "\
+            "\n(Block number/ Street number/ Building number)"\
             "\nFor example: BLK 123 Orchard street 1"\
             "\n\nType /cancel to cancel"
     try:
         postal = int(postal)
         if 0<=postal<=999999:
-            context.user_data['Postal code'] = postal
-            update.message.reply_text(text=text)
-            return ADDRESS
+            try:
+                sheet3 = gc.open("Recyclables (Database)").worksheet("Postals")
+                sheet3.find(str(postal))
+                context.user_data['Postal code'] = postal
+                update.message.reply_text(text=text,
+                    parse_mode='Markdown',
+                    disable_web_page_preview=True)
+                return ADDRESS
 
-        elif 0<=postal<=999999:
-            update.message.reply_text(text=unavailable_text)
-            return ADDRESS
+            except gspread.exceptions.CellNotFound: #gspread exceptions
+                update.message.reply_text(text=unavailable_text,
+                    parse_mode='Markdown',
+                    disable_web_page_preview=True)
+                return STOPPING
 
         else:
-            update.message.reply_text(text=invalid_text + text)
+            update.message.reply_text(text=invalid_text,
+                parse_mode='Markdown',
+                disable_web_page_preview=True)
             return POSTAL
 
     except ValueError:
-        update.message.reply_text(text=invalid_text + text)
+        update.message.reply_text(text=invalid_text,
+            parse_mode='Markdown',
+            disable_web_page_preview=True)
         return POSTAL
 
 def address(update, context):
@@ -755,12 +788,17 @@ def main():
     # global throughput to 29 messages per 1 second
     q = mq.MessageQueue(all_burst_limit=29, all_time_limit_ms=1000)
     request = Request(con_pool_size=8)
-    TOKEN = '1068793031:AAHJdDT21UGx7eommP-WTP0ozX5jdmt9or4'
+
+    # For production deployment
+    TOKEN = '1068793031:AAHJdDT21UGx7eommP-WTP0ozX5jdmt9or4' # Actual bot token
     NAME = "recyclables"
     PORT = os.environ.get('PORT')
-    mainBot = MQBot(TOKEN, request=request, mqueue=q)
-    updater = Updater(bot=mainBot, use_context=True)
-    dp = updater.dispatcher
+
+    # # For testing
+    # TOKEN = '1053894250:AAHvggL1aCvs6j8UhfjK-buS61giffJ74qY' # Test bot token
+    # mainBot = MQBot(TOKEN, request=request, mqueue=q)
+    # updater = Updater(bot=mainBot, use_context=True)
+    # dp = updater.dispatcher
 
     # Fifth level (time + confirm)
     confirm_level = ConversationHandler(
@@ -1006,12 +1044,15 @@ def main():
     dp.add_handler(conv_handler)
     dp.add_error_handler(error)
 
-    # Start the webhook
+    # # For production deployment
     updater.start_webhook(listen="0.0.0.0",
                           port=int(PORT),
                           url_path=TOKEN)
     updater.bot.setWebhook("https://{}.herokuapp.com/{}".format(NAME, TOKEN))
-    updater.idle()
+
+    # # For local hosting ONLY
+    # updater.start_polling()
+    # updater.idle()
 
 if __name__ == '__main__':
     main()
