@@ -100,6 +100,7 @@ def collection_format(user_data):
 
 # Main functions
 def start(update, context):
+
     main_text = "*Recyclables* can help you to schedule "\
                 "recycling collections with a karang guni conveniently!"\
                 "\n\nThrough *Recyclables*, you can help the environment "\
@@ -137,7 +138,7 @@ def start(update, context):
             text = main_text + basket_text
         else:
             text = main_text
-
+        update.callback_query.answer()
         update.callback_query.edit_message_text(
             text=text,
             parse_mode="Markdown",
@@ -179,7 +180,7 @@ def recycle(update, context):
                 [InlineKeyboardButton("« Back to main menu", callback_data=str(END))]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-
+    update.callback_query.answer()
     update.callback_query.edit_message_text(
         text="Please select the type of recyclables\n you wish to recycle:"\
                 "\n\nType /cancel to exit the bot.",
@@ -324,7 +325,7 @@ def item_basket(update, context):
                 [InlineKeyboardButton("➖  Clear item(s)", callback_data=str(CLEAR_ITEM))]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-
+    update.callback_query.answer()
     update.callback_query.edit_message_text(
                     text=("*Your current recyclables:*\n{}"\
                         "\n\nType /cancel to exit the bot.".format(item_format(user_data))),
@@ -341,7 +342,7 @@ def clear_item(update, context):
                 [InlineKeyboardButton("« Back", callback_data=str(END_CLEAR))]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-
+    update.callback_query.answer()
     update.callback_query.edit_message_text(
         text="Please select the item you wish to clear:",
         reply_markup=reply_markup
@@ -351,7 +352,6 @@ def clear_item(update, context):
 
 def clear_confirm(update, context):
     choice = update.callback_query.data
-
     if choice == CHOICE1:
         context.user_data.pop(PAPERS, None)
         text = "Papers cleared!"
@@ -416,6 +416,7 @@ def date_selection(update, context):
             keyboard = [InlineKeyboardButton("« Back to item basket", callback_data=str(END))]
 
         reply_markup = InlineKeyboardMarkup(keyboard)
+        update.callback_query.answer()
         update.callback_query.edit_message_text(
             text=text,
             parse_mode='Markdown',
@@ -443,6 +444,7 @@ def agreement(update, context):
                 InlineKeyboardButton("« Back to select date", callback_data=str(END_AGREEMENT))]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
+    update.callback_query.answer()
     update.callback_query.edit_message_text(
         text="*Please do ensure your recyclables are reasonably accurate to the weight indicated*."\
                 "\nCollection times will be between 9am to 5pm."
@@ -479,6 +481,7 @@ def basket_confirm(update, context):
                 InlineKeyboardButton("« Back", callback_data=str(END))]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
+    update.callback_query.answer()
     update.callback_query.edit_message_text(
         text=text+end_text,
         reply_markup=reply_markup,
@@ -504,6 +507,7 @@ def success(update, context):
     collection_add = ("\n\n*Collection address:*\n{}".format(text_address))
     collection_detail = ("\n*Collection details:*\n{0}".format(days))
     end_text = "\n\n_See FAQ should you need any help_"
+    update.callback_query.answer()
     update.callback_query.edit_message_text(
         text=header_text + order_text + item_text + collection_add + collection_detail + end_text,
         parse_mode="Markdown"
@@ -794,7 +798,7 @@ def main():
     NAME = "recyclables"
     PORT = os.environ.get('PORT')
 
-    # # For testing
+    # # # For testing
     # TOKEN = '1053894250:AAHvggL1aCvs6j8UhfjK-buS61giffJ74qY' # Test bot token
 
     mainBot = MQBot(TOKEN, request=request, mqueue=q)
@@ -1045,13 +1049,13 @@ def main():
     dp.add_handler(conv_handler)
     dp.add_error_handler(error)
 
-    # # For production deployment
+    # For production deployment
     updater.start_webhook(listen="0.0.0.0",
                           port=int(PORT),
                           url_path=TOKEN)
     updater.bot.setWebhook("https://{}.herokuapp.com/{}".format(NAME, TOKEN))
 
-    # For local hosting ONLY
+    # # For local hosting ONLY
     # updater.start_polling()
     # updater.idle()
 
