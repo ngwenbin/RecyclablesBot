@@ -1,39 +1,29 @@
 # Recyclables
-Singapore 1st Karang Guni hailing Bot
+
+Singapore's 1st Karung Guni hailing bot
+
+Our goal is to improve Singapore’s domestic recycling efforts by partnering with the local karung guni community. By bridging the gap between residents and the collectors via a digital platform, household recycling is made more convenient and at the same time, it reduces recycling waste contamination which makes recycling overall more effective.
+
 ## Table of contents
 
 * Requirements
 
 * Misc
 
-
 ## Requirements
 
-Modulues/ APIs required to run
-
-* [gspread](https://github.com/burnash/gspread)
-
-To install gspread:
+To install the necessary packages/ modules:
 
 ```sh
-  pip install gspread
+  pip install -r requirements.txt
 ```
-* [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot)
-
-To install python-telegram-bot:
-
+Create your own .env file and paste your own Telegram bot token inside:
 ```sh
-  pip install python-telegram-bot --upgrade
+TELEGRAM_TOKEN = YOUR TOKEN
 ```
-Extensions required:
-```sh
-CodeRunner, Pylint, Python, Google Complete me.
-```
-
 
 ## Misc
 
-- Do not share bot API TOKEN
-- Updates to the framework should be done via pull request.
+- Updates to the bot must be done via pull request.
 
-  Be careful of editing files in master branch, especially main framework files!
+  Be careful of editing files in master branch!

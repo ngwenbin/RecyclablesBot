@@ -1,4 +1,4 @@
-import gspread, re, logging, telegram.bot, pricelist, os
+import gspread, re, logging, telegram.bot, pricelist, os, requests
 from oauth2client.service_account import ServiceAccountCredentials
 from telegram import (InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup,
                     ReplyKeyboardRemove, KeyboardButton)
@@ -8,6 +8,10 @@ from telegram.ext import messagequeue as mq
 from datetime import date
 from datetime import timedelta
 from datetime import datetime
+from dotenv import load_dotenv
+
+# load env file
+load_dotenv()
 
 ## gspread stuffs ##
 scope = ["https://spreadsheets.google.com/feeds","https://www.googleapis.com/auth/drive"]
@@ -113,7 +117,7 @@ def start(update, context):
     register_text = "Oops! Looks like you are not registered with us."\
                     "\n\nIn order to use Recyclables,"\
                     "\nI will require your residential address for registration purposes."\
-                    "\n\n*🚨 Currently, we are only operating in:*"\
+                    "\n\n🚨 We are currently only operating in:"\
                     "\nChoa Chu Kang"\
                     "\nYew Tee"\
                     "\n\nWould you like to proceed?"\
@@ -367,7 +371,7 @@ def clear_confirm(update, context):
 
 def date_filter(day):
     today = date.today()
-    current_limits = 20
+    current_limits = 10
 
     if day == 6:
         dates = today + timedelta(6 - (today.weekday()) % 7)
@@ -386,7 +390,8 @@ def date_filter(day):
 
 def date_selection(update, context):
     context.user_data[START_OVER] = True
-    current_limits = 20
+    current_limits = 10
+    sheet2 = gc.open("Recyclables (Database)").worksheet("Orders")
     if context.user_data.get(BASKET):
         keyboard = [#[InlineKeyboardButton("Monday", callback_data='Monday'),
                     #InlineKeyboardButton("Tuesday", callback_data='Tuesday')],
@@ -413,7 +418,7 @@ def date_selection(update, context):
         if int(next_friday) >= current_limits and int(next_saturday) >= current_limits:
             text = "*Sorry, our collection slots are full, please try again next week!*"\
                     "\n\nType /cancel to exit the bot."
-            keyboard = [InlineKeyboardButton("« Back to item basket", callback_data=str(END))]
+            keyboard = [[InlineKeyboardButton("« Back to item basket", callback_data=str(END))]]
 
         reply_markup = InlineKeyboardMarkup(keyboard)
         update.callback_query.answer()
@@ -447,7 +452,7 @@ def agreement(update, context):
     update.callback_query.answer()
     update.callback_query.edit_message_text(
         text="*Please do ensure your recyclables are reasonably accurate to the weight indicated*."\
-                "\nCollection times will be between 9am to 5pm."
+                "\nCollection times will be between 11am to 2pm."
                 "\n\nType /cancel to exit the bot.",
         parse_mode='Markdown',
         reply_markup=reply_markup
@@ -473,7 +478,7 @@ def basket_confirm(update, context):
             "Item basket:\n_{0}_"\
             "\n\nCollection address:\n{1}"\
             "\nCollection details:\n{2}"\
-            "\n9am to 5pm".format(item_format(user_data),
+            "\n11am to 2pm".format(item_format(user_data),
                                   text_address,
                                   days))
     end_text = "\n\nType /cancel to exit the bot."
@@ -638,8 +643,8 @@ def proceed(update, context):
 
 def register(update, context):
     update.callback_query.edit_message_text(
-        text="Okay, please tell me your postal code in six digits."\
-                "\n\n*🚨 Currently, we are only operating in:*"\
+        text="*Okay, please tell me your postal code in six digits.*"\
+                "\n\n🚨 We are currently only operating in:"\
                 "\nChoa Chu Kang"\
                 "\nYew Tee"\
                 "\n\nFor example: 520123"\
@@ -647,31 +652,60 @@ def register(update, context):
         parse_mode='Markdown',
     )
     return POSTAL
+def build_menu(buttons,n_cols,header_buttons=None,footer_buttons=None):
+  menu = [buttons[i:i + n_cols] for i in range(0, len(buttons), n_cols)]
+  if header_buttons:
+    menu.insert(0, header_buttons)
+  if footer_buttons:
+    menu.append(footer_buttons)
+  return menu
 
 def postal(update, context):
     postal = update.message.text
-    invalid_text="Invalid postal code, please try again."\
+
+    # One map SG api-endpoint
+    URL = "https://developers.onemap.sg/commonapi/search"
+    PARAMS = {'searchVal': postal,
+              'returnGeom': 'Y',
+              'getAddrDetails' : 'Y'}
+
+    invalid_text="*Invalid postal code, please try again.*"\
                     "\n\nType /cancel to cancel"
     unavailable_text = "Sorry! Our services are currently not available in your region!"\
-                        "\n\n*🚨 Currently, we are only operating in:*"\
+                        "\n\n🚨 We are currently only operating in:"\
                         "\nChoa Chu Kang"\
                         "\nYew Tee"\
                         "\n\nFollow us on [Instagram](https://www.instagram.com/recyclables.sg/) or [Facebook](https://www.facebook.com/recyclables.sg/) for updates!"
 
-    text="Please tell me your address: "\
-            "\n(Block number/ Street number/ Building number)"\
-            "\nFor example: BLK 123 Orchard street 1"\
+    text="*Please select your address from the following:* "\
             "\n\nType /cancel to cancel"
+
     try:
         postal = int(postal)
-        if 0<=postal<=999999:
+        r = requests.get(url = URL, params=PARAMS)
+        add_data = r.json()
+        if add_data['found'] > 0:
             try:
                 sheet3 = gc.open("Recyclables (Database)").worksheet("Postals")
                 sheet3.find(str(postal))
                 context.user_data['Postal code'] = postal
-                update.message.reply_text(text=text,
+                keyboard_button = []
+                x = 0
+                for i in add_data['results']:
+                    block = add_data['results'][x]['BLK_NO']
+                    street = add_data['results'][x]['ROAD_NAME']
+                    full_add = 'BLK ' + block + ' ' + street
+                    lat = add_data['results'][x]['LATITUDE']
+                    lng = add_data['results'][x]['LONGITUDE']
+                    keyboard_button.append(InlineKeyboardButton(full_add, callback_data=(full_add+','+lat+','+lng)))
+                    x+=1
+                reply_markup = InlineKeyboardMarkup(build_menu(keyboard_button,n_cols=1))
+                update.message.reply_text(
+                    text=text,
                     parse_mode='Markdown',
-                    disable_web_page_preview=True)
+                    reply_markup=reply_markup,
+                    disable_web_page_preview=True,
+                )
                 return ADDRESS
 
             except gspread.exceptions.CellNotFound: #gspread exceptions
@@ -693,12 +727,18 @@ def postal(update, context):
         return POSTAL
 
 def address(update, context):
-    address = update.message.text
-    context.user_data['Address'] = address
-    update.message.reply_text(
-        text="Okay, please tell me your unit number: \n(#Floor - unit number)"\
+    res = update.callback_query.data
+    data = res.split(",")
+    update.callback_query.answer()
+    context.user_data['Address'] = data[0]
+    context.user_data['latitude'] = data[1]
+    context.user_data['longitude'] = data[2]
+    update.callback_query.edit_message_text(
+        text="*Okay, please tell me your unit number:*"\
+                "\n_Floor - unit number_"\
                 "\nFor example: #01-01"
-                "\n\nType /cancel to cancel"
+                "\n\nType /cancel to cancel",
+        parse_mode='Markdown'
     )
     return UNIT
 
@@ -714,11 +754,13 @@ def unit(update, context):
         postal = context.user_data['Postal code']
         address = context.user_data['Address']
         unit = context.user_data['Unit']
+        latitude = context.user_data['latitude']
+        longitude = context.user_data['longitude']
         update.message.reply_text("Your address:\n{}"\
                                     "\nThank you for registering! To change your address,"\
                                     " navigate to Help in the menu.".format(address_format(user_data)))
 
-        sheet.append_row([userids,username,userfirstname,address,unit,postal],value_input_option="RAW")
+        sheet.append_row([userids, username, userfirstname, address, unit,postal, latitude, longitude],value_input_option="RAW")
         user_data.clear()
 
         start(update, context)
@@ -792,14 +834,11 @@ def main():
     # global throughput to 29 messages per 1 second
     q = mq.MessageQueue(all_burst_limit=29, all_time_limit_ms=1000)
     request = Request(con_pool_size=8)
+    TOKEN = os.getenv("TELEGRAM_TOKEN")
 
     # For production deployment
-    TOKEN = '1068793031:AAHJdDT21UGx7eommP-WTP0ozX5jdmt9or4' # Actual bot token
     NAME = "recyclables"
     PORT = os.environ.get('PORT')
-
-    # # # For testing
-    # TOKEN = '1053894250:AAHvggL1aCvs6j8UhfjK-buS61giffJ74qY' # Test bot token
 
     mainBot = MQBot(TOKEN, request=request, mqueue=q)
     updater = Updater(bot=mainBot, use_context=True)
@@ -1012,7 +1051,7 @@ def main():
         states={
             POSTAL: [MessageHandler(Filters.text, postal)],
 
-            ADDRESS: [MessageHandler(Filters.text, address)],
+            ADDRESS: [CallbackQueryHandler(address)],
 
             UNIT: [MessageHandler(Filters.text, unit)],
         },
@@ -1055,7 +1094,7 @@ def main():
                           url_path=TOKEN)
     updater.bot.setWebhook("https://{}.herokuapp.com/{}".format(NAME, TOKEN))
 
-    # # For local hosting ONLY
+    # For local hosting ONLY
     # updater.start_polling()
     # updater.idle()
 
