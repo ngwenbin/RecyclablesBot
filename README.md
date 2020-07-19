@@ -22,6 +22,15 @@ Create your own .env file and paste your own Telegram bot token inside:
 TELEGRAM_TOKEN = YOUR TOKEN
 ```
 
+Remember to comment the following snippet during development. Likewise, uncomment it before making a commit.
+```sh
+# For production deployment
+updater.start_webhook(listen="0.0.0.0",
+                      port=int(PORT),
+                      url_path=TOKEN)
+updater.bot.setWebhook("https://{}.herokuapp.com/{}".format(NAME, TOKEN))
+```
+
 ## Misc
 
 - Updates to the bot must be done via pull request.
