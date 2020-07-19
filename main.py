@@ -1,7 +1,7 @@
 import gspread, re, logging, telegram.bot, pricelist, os, requests
 from oauth2client.service_account import ServiceAccountCredentials
 from telegram import (InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup,
-                    ReplyKeyboardRemove, KeyboardButton)
+                    ReplyKeyboardRemove, KeyboardButton, ChatAction)
 from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters,
                         ConversationHandler, CallbackQueryHandler)
 from telegram.ext import messagequeue as mq
@@ -497,14 +497,13 @@ def basket_confirm(update, context):
 
 def success(update, context):
     user_data = context.user_data
-
+    context.bot.send_chat_action(chat_id=update.effective_message.chat_id, action=ChatAction.TYPING)
     order_number = sheet2.acell('C3').value
     userids = str(update.effective_user.id)
     items = item_format(user_data)
     text_address = user_data[FULL_ADDRESS]
     #times = user_data[TIMES]
     days = user_data[DAYS]
-
     header_text = ("*Your order has been confirmed! 👍🏻\n\n*")
     order_text = ("*Order No #{}*"\
                     "\n-------------------------".format(order_number))
@@ -682,6 +681,7 @@ def postal(update, context):
 
     try:
         postal = int(postal)
+        context.bot.send_chat_action(chat_id=update.effective_message.chat_id, action=ChatAction.TYPING)
         r = requests.get(url = URL, params=PARAMS)
         add_data = r.json()
         if add_data['found'] > 0:
