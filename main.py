@@ -549,7 +549,7 @@ def info(update, context):
                 [InlineKeyboardButton("« Back", callback_data=str(END))]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-
+    update.callback_query.answer()
     update.callback_query.edit_message_text(
         text="What info would you like to see?"\
             "\n\nType /cancel to exit the bot.",
@@ -560,7 +560,7 @@ def info(update, context):
 def info_privacy(update, context):
     keyboard = [[InlineKeyboardButton("« Back", callback_data=str(END_INFO))]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-
+    update.callback_query.answer()
     update.callback_query.edit_message_text(
         text="We treat your data very seriously. Do visit our [Facebook](https://www.facebook.com/recyclables.sg/) page for more information.",
         reply_markup=reply_markup,
@@ -572,7 +572,7 @@ def info_privacy(update, context):
 def info_about(update, context):
     keyboard = [[InlineKeyboardButton("« Back", callback_data=str(END_INFO))]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-
+    update.callback_query.answer()
     update.callback_query.edit_message_text(
         text="Hello! We are a team of 4 students from the National University of Singapore (NUS)."\
              "\n\nWe seek to increase domestic recycling rates by enhancing the convenience of recycling,"\
@@ -588,7 +588,7 @@ def helps(update, context):
                 [InlineKeyboardButton("« Back", callback_data=str(END))]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-
+    update.callback_query.answer()
     update.callback_query.edit_message_text(
         text="How can I help you? 😊"\
              "\n\nType /cancel to exit the bot.",
@@ -599,7 +599,7 @@ def helps(update, context):
 def helps_faq(update, context):
     keyboard = [[InlineKeyboardButton("« Back", callback_data=str(END_HELPS))]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-
+    update.callback_query.answer()
     update.callback_query.edit_message_text(
         text="Our FAQ can be found on our [Facebook page](https://www.facebook.com/recyclables.sg/).",
         reply_markup=reply_markup,
@@ -611,7 +611,7 @@ def helps_faq(update, context):
 def helps_contact(update, context):
     keyboard = [[InlineKeyboardButton("« Back", callback_data=str(END_HELPS))]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-
+    update.callback_query.answer()
     update.callback_query.edit_message_text(
         text="Feel free to reach us at the following channels!"\
              "\n\n*Email*: help@recyclables.sg"\
@@ -627,7 +627,7 @@ def change_address(update, context):
     keyboard = [[InlineKeyboardButton("Proceed", callback_data=str(PROCEED)),
                 InlineKeyboardButton("« Back", callback_data=str(END_HELPS))]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-
+    update.callback_query.answer()
     update.callback_query.edit_message_text(
         text="🚨 Proceeding will reset your registration details "\
                 "and you will have to register again to use our services."\
@@ -642,12 +642,14 @@ def proceed(update, context):
     sheet.delete_row(cells.row)
     user_data = context.user_data
     user_data.clear()
+    update.callback_query.answer()
     update.callback_query.edit_message_text(
         text="Reset completed, your details are removed. \n\nType /start to enter your new details!"
     )
     return STOPPING
 
 def register(update, context):
+    update.callback_query.answer()
     update.callback_query.edit_message_text(
         text="*Okay, please tell me your postal code in six digits.*"\
                 "\n\nWe are currently only operating in:"\
