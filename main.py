@@ -102,6 +102,12 @@ def collection_format(user_data):
             collect.append('{}'.format(value))
     return "\n".join(collect)
 
+def final_address_format(text):
+    data = list()
+    for i in text:
+        data.append('{}'.format(i))
+    return "\n\n".join(data)
+
 # Main functions
 def start(update, context):
 
@@ -114,13 +120,13 @@ def start(update, context):
                 "incentives for your recyclables! ☺️"\
                 "\n\nHow can I help you?"
 
-    register_text = "Oops! Looks like you are not registered with us."\
+    register_text = "*Oops! Looks like you are not registered with us.*"\
                     "\n\nIn order to use Recyclables,"\
-                    "\nI will require your residential address for registration purposes."\
-                    "\n\n🚨 We are currently only operating in:"\
-                    "\nChoa Chu Kang"\
-                    "\nYew Tee"\
-                    "\n\nWould you like to proceed?"\
+                    "\nI will need your residential address for registration purposes."\
+                    "\n\nWe are currently only operating in:"\
+                    "\n📍 Choa Chu Kang"\
+                    "\n📍 Yew Tee"\
+                    "\n\n*Would you like to proceed?*"\
                     "\n\nType /cancel to exit the bot."
 
     basket_text = "\n\n_You still have item(s) in your basket.\nDon't forget!_"
@@ -637,17 +643,17 @@ def proceed(update, context):
     user_data = context.user_data
     user_data.clear()
     update.callback_query.edit_message_text(
-        text="Reset completed. \n\nType /start to enter your new details!"
+        text="Reset completed, your details are removed. \n\nType /start to enter your new details!"
     )
     return STOPPING
 
 def register(update, context):
     update.callback_query.edit_message_text(
         text="*Okay, please tell me your postal code in six digits.*"\
-                "\n\n🚨 We are currently only operating in:"\
-                "\nChoa Chu Kang"\
-                "\nYew Tee"\
-                "\n\nFor example: 520123"\
+                "\n\nWe are currently only operating in:"\
+                "\n📍 Choa Chu Kang"\
+                "\n📍 Yew Tee"\
+                "\n\n_For example: 520123_"\
                 "\n\nType /cancel to cancel",
         parse_mode='Markdown',
     )
@@ -672,13 +678,12 @@ def postal(update, context):
     invalid_text="*Invalid postal code, please try again.*"\
                     "\n\nType /cancel to cancel"
     unavailable_text = "Sorry! Our services are currently not available in your region!"\
-                        "\n\n🚨 We are currently only operating in:"\
-                        "\nChoa Chu Kang"\
-                        "\nYew Tee"\
+                        "\n\nWe are currently only operating in:"\
+                        "\n📍 Choa Chu Kang"\
+                        "\n📍 Yew Tee"\
                         "\n\nFollow us on [Instagram](https://www.instagram.com/recyclables.sg/) or [Facebook](https://www.facebook.com/recyclables.sg/) for updates!"
 
-    text="*Please select your address from the following:* "\
-            "\n\nType /cancel to cancel"
+    text="*Please select your address from the following:* \n\n"
 
     try:
         postal = int(postal)
@@ -691,17 +696,22 @@ def postal(update, context):
                 context.user_data['Postal code'] = postal
                 keyboard_button = []
                 x = 0
+                text_address = []
                 for i in add_data['results']:
                     block = add_data['results'][x]['BLK_NO']
                     street = add_data['results'][x]['ROAD_NAME']
-                    full_add = 'BLK ' + block + ' ' + street
-                    lat = add_data['results'][x]['LATITUDE']
-                    lng = add_data['results'][x]['LONGITUDE']
-                    keyboard_button.append(InlineKeyboardButton(full_add, callback_data=(full_add+','+lat+','+lng)))
+                    building = add_data['results'][x]['BUILDING']
+                    full_add = block+ ' ' + street + ', '+ building
+                    lat = round(float(add_data['results'][x]['LATITUDE']),3)
+                    lng = round(float(add_data['results'][x]['LONGITUDE']),3)
+
+                    keyboard_button.append(InlineKeyboardButton("Address #" + str(x+1), callback_data=(full_add +','+str(lat)+','+str(lng))))
                     x+=1
+                    text_address.append("📍 Address #"+ str(x) + "\n"+ full_add)
+
                 reply_markup = InlineKeyboardMarkup(build_menu(keyboard_button,n_cols=1))
                 update.message.reply_text(
-                    text=text,
+                    text=text + final_address_format(text_address) + "\n\nType /cancel to cancel",
                     parse_mode='Markdown',
                     reply_markup=reply_markup,
                     disable_web_page_preview=True,
@@ -730,9 +740,9 @@ def address(update, context):
     res = update.callback_query.data
     data = res.split(",")
     update.callback_query.answer()
-    context.user_data['Address'] = data[0]
-    context.user_data['latitude'] = data[1]
-    context.user_data['longitude'] = data[2]
+    context.user_data['Address'] = data[0]+", "+data[1]
+    context.user_data['latitude'] = data[2]
+    context.user_data['longitude'] = data[3]
     update.callback_query.edit_message_text(
         text="*Okay, please tell me your unit number:*"\
                 "\n_Floor - unit number_"\
