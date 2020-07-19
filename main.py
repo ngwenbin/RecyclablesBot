@@ -574,9 +574,15 @@ def info_about(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.answer()
     update.callback_query.edit_message_text(
-        text="Hello! We are a team of 4 students from the National University of Singapore (NUS)."\
-             "\n\nWe seek to increase domestic recycling rates by enhancing the convenience of recycling,"\
-             "and reduce recycling waste contamination.",
+        text="Hello 👋🏻! We are a group of NUS students from NUS Social Impact Catalyst.\n\n"
+            "Our goal is to improve Singapore’s domestic recycling efforts by"
+            "partnering with the local karung guni community."
+            "By bridging the gap between residents and the collectors"
+            "via a digital platform, household recycling is"
+            "made more convenient and at the same time,"
+            "it reduces recycling waste contamination which"
+            "makes recycling overall more effective.",
+
         reply_markup=reply_markup
     )
     return INFOS
