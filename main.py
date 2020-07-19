@@ -1,7 +1,7 @@
 import gspread, re, logging, telegram.bot, pricelist, os, requests
 from oauth2client.service_account import ServiceAccountCredentials
 from telegram import (InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup,
-                    ReplyKeyboardRemove, KeyboardButton)
+                    ReplyKeyboardRemove, KeyboardButton, ChatAction)
 from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters,
                         ConversationHandler, CallbackQueryHandler)
 from telegram.ext import messagequeue as mq
@@ -503,7 +503,7 @@ def basket_confirm(update, context):
 
 def success(update, context):
     user_data = context.user_data
-
+    context.bot.send_chat_action(chat_id=update.effective_message.chat_id, action=ChatAction.TYPING)
     order_number = sheet2.acell('C3').value
     userids = str(update.effective_user.id)
     items = item_format(user_data)
@@ -687,6 +687,7 @@ def postal(update, context):
 
     try:
         postal = int(postal)
+        context.bot.send_chat_action(chat_id=update.effective_message.chat_id, action=ChatAction.TYPING)
         r = requests.get(url = URL, params=PARAMS)
         add_data = r.json()
         if add_data['found'] > 0:
@@ -705,9 +706,9 @@ def postal(update, context):
                     lat = round(float(add_data['results'][x]['LATITUDE']),3)
                     lng = round(float(add_data['results'][x]['LONGITUDE']),3)
 
-                    keyboard_button.append(InlineKeyboardButton("Address #" + str(x+1), callback_data=(full_add +','+str(lat)+','+str(lng))))
+                    keyboard_button.append(InlineKeyboardButton("📍 Address #" + str(x+1), callback_data=(full_add +','+str(lat)+','+str(lng))))
                     x+=1
-                    text_address.append("📍 Address #"+ str(x) + "\n"+ full_add)
+                    text_address.append("Address #"+ str(x) + "\n"+ full_add)
 
                 reply_markup = InlineKeyboardMarkup(build_menu(keyboard_button,n_cols=1))
                 update.message.reply_text(
