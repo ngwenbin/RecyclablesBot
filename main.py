@@ -213,7 +213,7 @@ def papers(update, context):
     update.callback_query.edit_message_text(
         text=("*Please select an estimated weight of your papers:*"\
                 "\n\nCurrent prices:\n"\
-                "_$0.03 to $0.05 per KG_"\
+                "_$0.06 per KG_"\
                 "\nNeed help in estimating the weight?"\
                 "\nClick [here](https://i.imgur.com/6zd9K5P.png)!"
                 "\n\nType /cancel to exit the bot."),
@@ -238,7 +238,7 @@ def clothes(update, context):
     update.callback_query.edit_message_text(
         text=("*Please select an estimated weight of your clothes:*"\
                 "\n\nCurrent estimated prices:\n"\
-                "_$0.08 to $0.10 per KG_"\
+                "_$0.20 per KG_"\
                 "\n\nType /cancel to exit the bot."),
         parse_mode='Markdown',
         reply_markup=reply_markup,
@@ -575,12 +575,12 @@ def info_about(update, context):
     update.callback_query.answer()
     update.callback_query.edit_message_text(
         text="Hello 👋🏻! We are a group of NUS students from NUS Social Impact Catalyst.\n\n"
-            "Our goal is to improve Singapore’s domestic recycling efforts by"
-            "partnering with the local karung guni community."
-            "By bridging the gap between residents and the collectors"
-            "via a digital platform, household recycling is"
-            "made more convenient and at the same time,"
-            "it reduces recycling waste contamination which"
+            "Our goal is to improve Singapore’s domestic recycling efforts by "
+            "partnering with the local karung guni community. "
+            "By bridging the gap between residents and the collectors "
+            "via a digital platform, household recycling is "
+            "made more convenient and at the same time, "
+            "it reduces recycling waste contamination which "
             "makes recycling overall more effective.",
 
         reply_markup=reply_markup
