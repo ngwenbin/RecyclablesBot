@@ -395,6 +395,9 @@ def date_filter(day):
     # Mon to Sun (0 to 6)
 
 def date_selection(update, context):
+    context.bot.send_chat_action(chat_id=update.effective_message.chat_id, action=ChatAction.TYPING)
+    if creds.access_token_expired:
+            gc.login()
     context.user_data[START_OVER] = True
     current_limits = 10
     sheet2 = gc.open("Recyclables (Database)").worksheet("Orders")
@@ -502,6 +505,8 @@ def basket_confirm(update, context):
     return CONFIRM_ORDER
 
 def success(update, context):
+    if creds.access_token_expired:
+            gc.login()
     user_data = context.user_data
     context.bot.send_chat_action(chat_id=update.effective_message.chat_id, action=ChatAction.TYPING)
     order_number = sheet2.acell('C3').value
