@@ -521,7 +521,8 @@ def success(update, context):
                     "\n-------------------------".format(order_number))
     item_text = ("\n*Recyclables to be collected:*\n{}".format(items))
     collection_add = ("\n\n*Collection address:*\n{}".format(text_address))
-    collection_detail = ("\n*Collection details:*\n{0}".format(days))
+    collection_detail = ("\n*Collection details:*\n{0}"\
+                         "\n11am to 2pm".format(days))
     end_text = "\n\n_See FAQ should you need any help_"
     update.callback_query.answer()
     update.callback_query.edit_message_text(
