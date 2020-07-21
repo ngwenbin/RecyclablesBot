@@ -301,11 +301,11 @@ def _item_text(item):
 
     if x > 0:
         text_item = ('Papers ({0}KG to {1}KG)'\
-                     '\n$0.03 to $0.05 per KG'.format((x)*10,
+                     '\n$0.06 per KG'.format((x)*10,
                                                     (x+1)*10))
     elif y > 0:
         text_item = ('Clothes ({0}KG to {1}KG)'\
-                     '\n$0.08 to $0.10 per KG'.format((y)*10,
+                     '\n$0.20 per KG'.format((y)*10,
                                                     (y+1)*10))
     return text_item
 
@@ -534,7 +534,7 @@ def success(update, context):
     groupchat="-1001427022537"
     bot.send_message(chat_id=groupchat,
                      parse_mode="Markdown",
-                     text=order_text+collection_add+collection_detail)
+                     text=order_text+item_text+collection_add+collection_detail)
 
     sheet2.append_row([order_number, userids, items, days, text_address],value_input_option="RAW")
     user_data.clear()
