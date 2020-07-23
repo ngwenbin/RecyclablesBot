@@ -399,6 +399,7 @@ def date_selection(update, context):
     if creds.access_token_expired:
             gc.login()
     context.user_data[START_OVER] = True
+    sheet2 = gc.open("Recyclables (Database)").worksheet("Orders")
     this_friday = sheet2.acell('G1').value
     next_friday = sheet2.acell('G2').value
     this_saturday = sheet2.acell('I1').value
