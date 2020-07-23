@@ -19,10 +19,6 @@ creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", sco
 gc = gspread.authorize(creds)
 sheet = gc.open("Recyclables (Database)").worksheet("Address")
 sheet2 = gc.open("Recyclables (Database)").worksheet("Orders")
-this_friday = sheet2.acell('G1').value
-next_friday = sheet2.acell('G2').value
-this_saturday = sheet2.acell('I1').value
-next_saturday = sheet2.acell('I2').value
 
 class MQBot(telegram.bot.Bot):
 
@@ -378,7 +374,8 @@ def clear_confirm(update, context):
 def date_filter(day):
     today = date.today()
     current_limits = 10
-    
+    this_friday = sheet2.acell('G1').value
+    this_saturday = sheet2.acell('I1').value
     if day == 6:
         dates = today + timedelta(6 - (today.weekday()) % 7)
         if today >= dates: # Check if today is the week's day or past the week's day
@@ -399,13 +396,9 @@ def date_selection(update, context):
     if creds.access_token_expired:
             gc.login()
     context.user_data[START_OVER] = True
-    sheet2 = gc.open("Recyclables (Database)").worksheet("Orders")
-    this_friday = sheet2.acell('G1').value
     next_friday = sheet2.acell('G2').value
-    this_saturday = sheet2.acell('I1').value
     next_saturday = sheet2.acell('I2').value
     current_limits = 10
-    sheet2 = gc.open("Recyclables (Database)").worksheet("Orders")
     if context.user_data.get(BASKET):
         keyboard = [#[InlineKeyboardButton("Monday", callback_data='Monday'),
                     #InlineKeyboardButton("Tuesday", callback_data='Tuesday')],
