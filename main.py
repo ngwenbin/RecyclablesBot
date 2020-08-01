@@ -784,10 +784,11 @@ def postal(update, context):
                     block = add_data['results'][x]['BLK_NO']
                     street = add_data['results'][x]['ROAD_NAME']
                     building = add_data['results'][x]['BUILDING']
+                    if '@' in building:
+                        building = building.split('@')[0]
                     full_add = block + ' ' + street + ', ' + building
                     lat = round(float(add_data['results'][x]['LATITUDE']), 3)
                     lng = round(float(add_data['results'][x]['LONGITUDE']), 3)
-
                     keyboard_button.append(InlineKeyboardButton(
                         "📍 Address #" + str(x+1), callback_data=(full_add + ','+str(lat)+','+str(lng))))
                     x += 1
