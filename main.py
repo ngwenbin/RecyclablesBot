@@ -396,7 +396,6 @@ def date_selection(update, context):
         if context.user_data.get(BASKET):
             r = requests.get(url=URL)
             date_data = r.json()
-            update.callback_query.answer()
             keyboard_button = []
 
             if 'dates' in date_data:
@@ -420,7 +419,7 @@ def date_selection(update, context):
                     text=text,
                     parse_mode='Markdown',
                 )
-
+            update.callback_query.answer()
             return DATES
 
         else:
