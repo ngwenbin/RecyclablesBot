@@ -1,32 +1,31 @@
-import gspread
-import re
-import logging
-import telegram.bot
-import os
-import requests
-from oauth2client.service_account import ServiceAccountCredentials
+import gspread, re, logging, telegram.bot, os, requests, time
 from telegram import (InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup,
                       ReplyKeyboardRemove, KeyboardButton, ChatAction)
 from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters,
                           ConversationHandler, CallbackQueryHandler)
 from telegram.ext import messagequeue as mq
-from datetime import (date, timedelta, datetime)
 from dotenv import load_dotenv
+from google.cloud import firestore
+from shards import Shard, Counter
+from order import Orders
+from user import Users
+from pricelist import paperprice, clothesprice
 
 # load env file
 load_dotenv()
 
-## gspread stuffs ##
-scope = ["https://spreadsheets.google.com/feeds",
-         "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name(
-    "credentials.json", scope)
-gc = gspread.authorize(creds)
-sheet = gc.open("Recyclables (Database)").worksheet("Address")
+gc = gspread.service_account(filename='credentials.json')
 sheet2 = gc.open("Recyclables (Database)").worksheet("Orders")
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credentials.json"
 
+# Global stuff
+db = firestore.Client() # initiates firestore db client
+shard_counter = Counter(10) # Initiates shard counts
+TOKEN = os.getenv("TELEGRAM_TOKEN")
+GRPCHATID = os.getenv("GROUPCHAT_ID")
+userdatas = {} # global user dict
 
-class MQBot(telegram.bot.Bot):
+class MQBot(telegram.bot.Bot): # Class handler for message queue
 
     def __init__(self, *args, is_queued_def=True, mqueue=None, **kwargs):
         super(MQBot, self).__init__(*args, **kwargs)
@@ -44,25 +43,21 @@ class MQBot(telegram.bot.Bot):
     def send_message(self, *args, **kwargs):
         return super(MQBot, self).send_message(*args, **kwargs)
 
+
 # ------------- State management -------------
 
-
 # First level states
-REGISTER, REGISTERYES, REGISTERNO, MAIN_MENU, RECYCLE, INFO, HELP,  = map(
-    chr, range(7))
+REGISTER, REGISTERYES, REGISTERNO, MAIN_MENU, RECYCLE, INFO, HELP,  = map(chr, range(7))
 # Sub second level state
 POSTAL, ADDRESS, UNIT = map(chr, range(7, 10))
 # Second level states
-HELPS, FAQ, CONTACT, CHANGE_ADDRESS, END_HELPS, PROCEED = map(
-    chr, range(10, 16))
+HELPS, FAQ, CONTACT, CHANGE_ADDRESS, END_HELPS, PROCEED = map(chr, range(10, 16))
 # Second level states
 INFOS, ABOUT, PRIVACY, END_INFO = map(chr, range(16, 20))
 # Second level states
-RECYCLABLES, ITEM_PAPERS, ITEM_ELECTRONICS, ITEM_CLOTHES = map(
-    chr, range(20, 24))
+RECYCLABLES, ITEM_PAPERS, ITEM_ELECTRONICS, ITEM_CLOTHES = map(chr, range(20, 24))
 # Third level states
-WEIGHT, CONFIRM, SELECT_DATE, CLEAR_ITEM, CLEAR, END_CLEAR, END_ELECTRONICS = map(
-    chr, range(24, 31))
+WEIGHT, CONFIRM, SELECT_DATE, CLEAR_ITEM, CLEAR, END_CLEAR, END_ELECTRONICS = map(chr, range(24, 31))
 # Fourth level states
 DATES, AGREEMENT, END_AGREEMENT = map(chr, range(31, 34))
 # Fifth level states
@@ -87,16 +82,14 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
+
 # Formatting of user data cache
-
-
 def address_format(user_data):
     data = list()
     for key, value in user_data.items():
         if key == 'Postal code' or key == 'Address' or key == 'Unit':
             data.append('{}: {}'.format(key, value))
     return "\n".join(data).join(['\n', '\n'])
-
 
 def item_format(user_data):
     items = list()
@@ -105,24 +98,22 @@ def item_format(user_data):
             items.append('{}'.format(value))
     return "\n".join(items)
 
-
-def collection_format(user_data):
-    collect = list()
-    for key, value in user_data.items():
-        if key == DAYS or key == TIMES:
-            collect.append('{}'.format(value))
-    return "\n".join(collect)
-
-
 def final_address_format(text):
     data = list()
     for i in text:
         data.append('{}'.format(i))
     return "\n\n".join(data)
 
+# Builds dynamic keyboard
+def build_menu(buttons, n_cols, header_buttons=None, footer_buttons=None):
+    menu = [buttons[i:i + n_cols] for i in range(0, len(buttons), n_cols)]
+    if header_buttons:
+        menu.insert(0, header_buttons)
+    if footer_buttons:
+        menu.append(footer_buttons)
+    return menu
+
 # Main functions
-
-
 def start(update, context):
 
     main_text = "*Recyclables* can help you to schedule "\
@@ -157,7 +148,7 @@ def start(update, context):
 
     reg_markup = InlineKeyboardMarkup(reg_keyboard)
 
-    if context.user_data.get(START_OVER):
+    if context.user_data.get(START_OVER): #To alert users who goes back to main with items in basket
         if context.user_data.get(BASKET):
             text = main_text + basket_text
         else:
@@ -168,21 +159,21 @@ def start(update, context):
             parse_mode="Markdown",
             reply_markup=main_markup
         )
-
         context.user_data[START_OVER] = False
         return MAIN_MENU
 
     else:
         userids = str(update.effective_user.id)
+        doc_ref = db.collection(u'users').document(userids)
+        doc = doc_ref.get()
         update.message.reply_text(
             "*Hello " + str(update.message.from_user.first_name) +
             "!* 👋🏻 \nWelcome to Recyclables!",
             parse_mode="Markdown"
         )
-        try:
-            gc.login()
-            cells = sheet.find(userids)
-            context.user_data[ROW] = cells.row
+        if doc.exists: # If user document exists
+            userdatas.clear() # Clears global dict
+            userdatas.update(doc.to_dict()) # Updates global dict with user data dict from firestore
             update.message.reply_text(
                 text=main_text,
                 parse_mode="Markdown",
@@ -190,7 +181,7 @@ def start(update, context):
             )
             return MAIN_MENU
 
-        except gspread.exceptions.CellNotFound:  # gspread exceptions
+        else:
             update.message.reply_text(
                 text=register_text,
                 reply_markup=reg_markup,
@@ -208,7 +199,7 @@ def recycle(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.answer()
     update.callback_query.edit_message_text(
-        text="Please select the type of recyclables\n you wish to recycle:"
+        text="Please select the type of recyclables\n you wish to recycle:"\
         "\n\nType /cancel to exit the bot.",
         reply_markup=reply_markup
     )
@@ -228,12 +219,14 @@ def papers(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     update.callback_query.edit_message_text(
-        text=("*Please select an estimated weight of your papers:*"
-              "\n\nCurrent prices:\n"
-              "_$0.06 per KG_"
-              "\nNeed help in estimating the weight?"
-              "\nClick [here](https://i.imgur.com/6zd9K5P.png)!"
-              "\n\nType /cancel to exit the bot."),
+        text=("*Please select an estimated weight of your papers:*"\
+                "\n\nCurrent prices:\n"\
+                "_${} per KG_\n"\
+                "\nNeed help in estimating the weight?"\
+                "\nClick [here](https://i.imgur.com/6zd9K5P.png)!"\
+                "\n\n*IMPORTANT: Please remove any plastic covers/binders etc and our Karung guni uncles would really "\
+                "appreciate if you can separate any* [waxy-shiny paperback covers on textbooks/ books](https://i.imgur.com/euQGxUb.png) *if POSSIBLE.*"\
+                "\n\nType /cancel to exit the bot.".format(paperprice)),
         parse_mode='Markdown',
         reply_markup=reply_markup,
         disable_web_page_preview=True
@@ -243,7 +236,7 @@ def papers(update, context):
 
 def clothes(update, context):
     update.callback_query.answer(
-        text="Do ensure your clothes are clean as they are meant to be reused not recycled.",
+        text="We only accept normal civilian clothings as they are meant to be reused. Items such as but not limited to school/ work uniforms, canvas bags etc are not acceptable",
         show_alert=True)
     keyboard = [[InlineKeyboardButton("10KG to 20KG", callback_data=str(CLOTHES1))],
                 [InlineKeyboardButton("20KG to 30KG", callback_data=str(CLOTHES2))],
@@ -254,10 +247,12 @@ def clothes(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     update.callback_query.edit_message_text(
-        text=("*Please select an estimated weight of your clothes:*"
-              "\n\nCurrent estimated prices:\n"
-              "_$0.20 per KG_"
-              "\n\nType /cancel to exit the bot."),
+        text=("*Please select an estimated weight of your clothes:*"\
+                "\n\nCurrent estimated prices:"\
+                "\n_${} per KG_"\
+                "\n\n*IMPORTANT: We only accept normal civilian clothings as they are meant to be reused. "\
+                "Items such as but not limited to school/ work uniforms, canvas bags etc are not acceptable*"\
+                "\n\nType /cancel to exit the bot.".format(clothesprice)),
         parse_mode='Markdown',
         reply_markup=reply_markup,
         disable_web_page_preview=True
@@ -275,21 +270,19 @@ def get_link(name, address):
 
 def electronics(update, context):
     name = str(update.effective_user.first_name)
-    row = context.user_data[ROW]
-    values = sheet.range("D{0}:F{1}".format(row, row))
-    address = ""
-    for cell in values:
-        address += ("{}\n".format(cell.value))
+    address = (userdatas['address'], userdatas['unit'], userdatas['postal'])
+    full_address = ", ".join(address)
     update.callback_query.answer(
-        text="Electronic recycling will be done via google forms."
-             "\n\nDo note that electronics recycling requests are processed manually.",
+        text="Electronic recycling will be done via google forms."\
+                "A list of acceptable items is listed on the forms"\
+                "\n\nDo note that electronics recycling requests are processed manually.",
         show_alert=True)
     keyboard = InlineKeyboardButton(" « Back", callback_data=str(END))
     reply_markup = InlineKeyboardMarkup.from_button(keyboard)
 
     update.callback_query.edit_message_text(
         text=("Please fill in the form in [this link](" +
-              get_link(name, address) + ") to receive a quotation."),
+              get_link(name, full_address) + ") to receive a quotation."),
         # "https://forms.google.com/e_waste"),
         parse_mode='Markdown',
         reply_markup=reply_markup,
@@ -299,36 +292,22 @@ def electronics(update, context):
 
 
 def _item_text(item):
-    x = 0
-    y = 0
-    # Papers
-    if item == PAPER1:
-        x = 1
-    elif item == PAPER2:
-        x = 2
-    elif item == PAPER3:
-        x = 3
-    elif item == PAPER4:
-        x = 4
+    paperTypes = [PAPER1, PAPER2, PAPER3, PAPER4]
+    clothesTypes = [CLOTHES1, CLOTHES2, CLOTHES3, CLOTHES4]
 
-    # Clothes
-    elif item == CLOTHES1:
-        y = 1
-    elif item == CLOTHES2:
-        y = 2
-    elif item == CLOTHES3:
-        y = 3
-    elif item == CLOTHES4:
-        y = 4
-
-    if x > 0:
+    if item in paperTypes:
+        pos = paperTypes.index(item) + 1
         text_item = ('Papers ({0}KG to {1}KG)'
-                     '\n$0.06 per KG'.format((x)*10,
-                                             (x+1)*10))
-    elif y > 0:
+                 '\n${2} per KG'.format((pos)*10,
+                                         (pos+1)*10,
+                                            paperprice))
+    else:
+        pos = clothesTypes.index(item) + 1
         text_item = ('Clothes ({0}KG to {1}KG)'
-                     '\n$0.20 per KG'.format((y)*10,
-                                             (y+1)*10))
+                 '\n${2} per KG'.format((pos)*10,
+                                         (pos+1)*10,
+                                            clothesprice))
+
     return text_item
 
 
@@ -361,8 +340,8 @@ def item_basket(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.answer()
     update.callback_query.edit_message_text(
-        text=("*Your current recyclables:*\n{}"
-              "\n\nType /cancel to exit the bot.".format(item_format(user_data))),
+        text=("*Your current recyclables:*\n{}"\
+                "\n\nType /cancel to exit the bot.".format(item_format(user_data))),
         parse_mode='Markdown',
         reply_markup=reply_markup
     )
@@ -402,85 +381,53 @@ def clear_confirm(update, context):
     return CLEAR
 
 
-def date_filter(day):
-    today = date.today()
-    current_limits = 10
-    this_friday = sheet2.acell('G1').value
-    this_saturday = sheet2.acell('I1').value
-    if day == 6:
-        dates = today + timedelta(6 - (today.weekday()) % 7)
-        if today >= dates:  # Check if today is the week's day or past the week's day
-            dates = today + timedelta(days=day-today.weekday(), weeks=1)
-
-    else:
-        dates = today + timedelta(days=day-today.weekday() % 7)
-        if today >= dates or (int(this_friday) >= current_limits and day == 4) or (int(this_saturday) >= current_limits and day == 5):
-            dates = today + timedelta(days=day-today.weekday(), weeks=1)
-
-    return dates.strftime("%A (%d/%m/%y)")
-
-    # Mon to Sun (0 to 6)
-
-
 def date_selection(update, context):
     user_data = context.user_data
     context.bot.send_chat_action(
         chat_id=update.effective_message.chat_id, action=ChatAction.TYPING)
-    if creds.access_token_expired:
-        gc.login()
     context.user_data[START_OVER] = True
-    row = user_data[ROW]
+    URL = "https://us-central1-recyclables-telegram-bot.cloudfunctions.net/app/api/getDates/5/6"
 
     try:
-        val = sheet.acell("F{0}".format(row)).value
+        gc.login()
         sheet3 = gc.open("Recyclables (Database)").worksheet("Postals")
-        sheet3.find(str(val))
-        next_friday = sheet2.acell('G2').value
-        next_saturday = sheet2.acell('I2').value
-        current_limits = 10
+        sheet3.find(userdatas['postal'])
+
         if context.user_data.get(BASKET):
-            keyboard = [  # [InlineKeyboardButton("Monday", callback_data='Monday'),
-                # InlineKeyboardButton("Tuesday", callback_data='Tuesday')],
-                # [InlineKeyboardButton("Wednesday", callback_data='Wednesday'),
-                # InlineKeyboardButton("Thursday", callback_data='Thursday')],
-                [InlineKeyboardButton(date_filter(4), callback_data='4'),
-                 InlineKeyboardButton(date_filter(5), callback_data='5')],
-                [  # InlineKeyboardButton("Sunday", callback_data='Sunday'),
-                    InlineKeyboardButton("« Back to item basket", callback_data=str(END))]
-            ]
-            text = "*Please select your preferred date:*"\
-                "\n\nType /cancel to exit the bot."
-
-            if int(next_friday) >= current_limits:
-                keyboard = [[InlineKeyboardButton(date_filter(5), callback_data='5'),
-                             InlineKeyboardButton("« Back to item basket", callback_data=str(END))]
-                            ]
-
-            if int(next_saturday) >= current_limits:
-                keyboard = [[InlineKeyboardButton(date_filter(4), callback_data='4'),
-                             InlineKeyboardButton("« Back to item basket", callback_data=str(END))]
-                            ]
-
-            if int(next_friday) >= current_limits and int(next_saturday) >= current_limits:
-                text = "*Sorry, our collection slots are full, please try again next week!*"\
-                    "\n\nType /cancel to exit the bot."
-                keyboard = [[InlineKeyboardButton(
-                    "« Back to item basket", callback_data=str(END))]]
-
-            reply_markup = InlineKeyboardMarkup(keyboard)
+            r = requests.get(url=URL)
+            date_data = r.json()
             update.callback_query.answer()
-            update.callback_query.edit_message_text(
-                text=text,
-                parse_mode='Markdown',
-                reply_markup=reply_markup
-            )
+            keyboard_button = []
+
+            if 'dates' in date_data:
+                for i in date_data['dates']:
+                    keyboard_button.append(InlineKeyboardButton(i, callback_data=i))
+
+                reply_markup = InlineKeyboardMarkup(build_menu(keyboard_button, n_cols=1))
+                text = "*Please select your preferred date:*"\
+                    "\n\nType /cancel to exit the bot."
+                update.callback_query.edit_message_text(
+                    text=text,
+                    parse_mode='Markdown',
+                    reply_markup=reply_markup
+                )
+
+            else:
+                text = "*We are fully booked! Please try again next week!*"\
+                        "\n\nType /cancel to exit the bot."
+
+                update.callback_query.edit_message_text(
+                    text=text,
+                    parse_mode='Markdown',
+                )
+
             return DATES
 
         else:
             update.callback_query.answer(
-                text="You cannot proceed to select date"
-                " with nothing in your basket!"
-                "\n\nPlease add items into your basket.",
+                text="You cannot proceed to select date"\
+                    " with nothing in your basket!"\
+                    "\n\nPlease add items into your basket.",
                 show_alert=True
             )
             return END
@@ -498,27 +445,29 @@ def date_selection(update, context):
         update.callback_query.edit_message_text(
             text=text,
             parse_mode='Markdown',
-            reply_markup=reply_markup
+            reply_markup=reply_markup,
+            disable_web_page_preview=True
         )
         return DATES
 
 
 def agreement(update, context):
-    if context.user_data.get(START_OVER):
-        days = update.callback_query.data
-        context.user_data[DAYS] = date_filter(int(days))
+    user_data = context.user_data
+    if user_data.get(START_OVER):
+        user_data[DAYS] = update.callback_query.data
     else:
         context.user_data[START_OVER] = True
+
     keyboard = [[InlineKeyboardButton("Yes, I agree", callback_data=('agree')),
-                 # InlineKeyboardButton("PM", callback_data=('2pm to 5pm'))],
                  InlineKeyboardButton("« Back to select date", callback_data=str(END_AGREEMENT))]
                 ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.answer()
     update.callback_query.edit_message_text(
-        text="*Please do ensure your recyclables are reasonably accurate to the weight indicated*."
-        "\nCollection times will be between 11am to 2pm."
-        "\n\nType /cancel to exit the bot.",
+        text="*Please do ensure your recyclables are reasonably accurate to the weight indicated*."\
+                "\n\nBy proceeding you agree that your items are within our requirements and our Karung Guni uncles have the right to refuse them if they are not."\
+                "\n\nCollection timing will be between 11am to 2pm."\
+                "\n\nType /cancel to exit the bot.",
         parse_mode='Markdown',
         reply_markup=reply_markup
     )
@@ -531,21 +480,15 @@ def basket_confirm(update, context):
     #times = update.callback_query.data
     #user_data[TIMES] = times
     days = user_data[DAYS]
-    row = user_data[ROW]
-    if creds.access_token_expired:
-        gc.login()
-    values = sheet.range("D{0}:F{1}".format(row, row))
-    text_address = ''
+    address = (userdatas['address'], userdatas['unit'], userdatas['postal'])
+    full_address = "\n".join(address)
 
-    for cell in values:
-        text_address += ("{}\n".format(cell.value))
-
-    text = ("*Your current order is as follows:*\n"
-            "Item basket:\n_{0}_"
-            "\n\nCollection address:\n{1}"
-            "\nCollection details:\n{2}"
+    text = ("*Your current order is as follows:*\n"\
+            "Item basket:\n_{0}_"\
+            "\n\nCollection address:\n{1}"\
+            "\n\nCollection details:\n{2}"\
             "\n11am to 2pm".format(item_format(user_data),
-                                   text_address,
+                                   full_address,
                                    days))
     end_text = "\n\nType /cancel to exit the bot."
     keyboard = [[InlineKeyboardButton("🛒  Checkout", callback_data=str(CHECKOUT)),
@@ -558,48 +501,59 @@ def basket_confirm(update, context):
         reply_markup=reply_markup,
         parse_mode='Markdown'
     )
-    user_data[FULL_ADDRESS] = text_address
+    userdatas['fulladdress'] = full_address
     return CONFIRM_ORDER
 
 
 def success(update, context):
-    if creds.access_token_expired:
-        gc.login()
     user_data = context.user_data
-    context.bot.send_chat_action(
-        chat_id=update.effective_message.chat_id, action=ChatAction.TYPING)
-    order_number = sheet2.acell('C3').value
+    gc.login()
+    context.bot.send_chat_action(chat_id=update.effective_message.chat_id, action=ChatAction.TYPING)
     userids = str(update.effective_user.id)
-    items = item_format(user_data)
-    text_address = user_data[FULL_ADDRESS]
-    #times = user_data[TIMES]
-    days = user_data[DAYS]
+    username = str(update.effective_user.username)
+    item = item_format(user_data)
+    full_address = userdatas['fulladdress']
+    timeslot = user_data[DAYS]
+    timestamp = str(int(time.time()))
+    ordernum = timestamp + "U" + userids
+
+    if re.match(r"\b(\w*fri\w*)\b", timeslot, re.I):
+        shard_counter.increment_friday(db)
+    elif re.match(r"\b(\w*sat\w*)\b", timeslot, re.I):
+        shard_counter.increment_saturday(db)
 
     header_text = ("*Your order has been confirmed! 👍🏻\n\n*")
-    order_text = ("*Order No #{}*"
-                  "\n-------------------------".format(order_number))
-    item_text = ("\n*Recyclables to be collected:*\n{}".format(items))
-    collection_add = ("\n\n*Collection address:*\n{}".format(text_address))
-    collection_detail = ("\n*Collection details:*\n{0}"
-                         "\n11am to 2pm".format(days))
+
+    order_text = ("*Order No. #O{}*"\
+                  "\n-------------------------".format(ordernum))
+
+    item_text = ("\n*Recyclables to be collected:*\n{}".format(item))
+
+    collection_add = ("\n\n*Collection address:*\n{}".format(full_address))
+
+    collection_detail = ("\n\n*Collection details:*\n{0}"\
+                         "\n11am to 2pm".format(timeslot))
+
     end_text = "\n\n_See FAQ should you need any help_"
+
     update.callback_query.answer()
     update.callback_query.edit_message_text(
         text=header_text + order_text + item_text +
-        collection_add + collection_detail + end_text,
+            collection_add + collection_detail + end_text,
         parse_mode="Markdown"
     )
 
     # this is for order message notification
     bot = context.bot
-    groupchat = "-1001427022537"
-    bot.send_message(chat_id=groupchat,
+    bot.send_message(chat_id=GRPCHATID,
                      parse_mode="Markdown",
                      text=order_text+item_text+collection_add+collection_detail)
 
-    sheet2.append_row([order_number, userids, items, days,
-                       text_address], value_input_option="RAW")
+    db.collection(u'orders').document(ordernum).set(Orders(userids, username, ordernum, item, timeslot, timestamp).orders_to_dict())
+    shard_counter.increment_order(db)
+    sheet2.append_row([ordernum, userids, item, timeslot, full_address], value_input_option="RAW")
     user_data.clear()
+    userdatas.clear()
     return STOPPING
 
 
@@ -646,14 +600,14 @@ def info_about(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.answer()
     update.callback_query.edit_message_text(
-        text="Hello 👋🏻! We are a group of NUS students from NUS Social Impact Catalyst.\n\n"
-        "Our goal is to improve Singapore’s domestic recycling efforts by "
-        "partnering with the local karung guni community. "
-        "By bridging the gap between residents and the collectors "
-        "via a digital platform, household recycling is "
-        "made more convenient and at the same time, "
-        "it reduces recycling waste contamination which "
-        "makes recycling overall more effective.",
+        text="Hello 👋🏻! We are a group of NUS students from NUS Social Impact Catalyst.\n\n"\
+                "Our goal is to improve Singapore’s domestic recycling efforts by "\
+                "partnering with the local karung guni community. "\
+                "By bridging the gap between residents and the collectors "\
+                "via a digital platform, household recycling is "\
+                "made more convenient and at the same time, "\
+                "it reduces recycling waste contamination which "\
+                "makes recycling overall more effective.",
 
         reply_markup=reply_markup
     )
@@ -694,10 +648,10 @@ def helps_contact(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.answer()
     update.callback_query.edit_message_text(
-        text="Feel free to reach us at the following channels!"
-             "\n\n*Email*: help@recyclables.sg"
-             "\n*Instagram* : [@recyclables.sg](https://www.instagram.com/recyclables.sg/)"
-             "\n*Facebook*: [recyclables.sg](https://www.facebook.com/recyclables.sg/)",
+        text="Feel free to reach us at the following channels!"\
+                "\n\n*Email*: help@recyclables.sg"\
+                "\n*Instagram* : [@recyclables.sg](https://www.instagram.com/recyclables.sg/)"\
+                "\n*Facebook*: [recyclables.sg](https://www.facebook.com/recyclables.sg/)",
         reply_markup=reply_markup,
         parse_mode='Markdown',
         disable_web_page_preview=True
@@ -711,9 +665,9 @@ def change_address(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.answer()
     update.callback_query.edit_message_text(
-        text="🚨 Proceeding will reset your registration details "
-        "and you will have to register again to use our services."
-        "\n\nDo you wish to proceed?",
+        text="🚨 Proceeding will reset your registration details "\
+                "and you will have to register again to use our services."\
+                "\n\nDo you wish to proceed?",
         reply_markup=reply_markup
     )
     return HELPS
@@ -721,10 +675,10 @@ def change_address(update, context):
 
 def proceed(update, context):
     userids = str(update.effective_user.id)
-    cells = sheet.find(userids)
-    sheet.delete_row(cells.row)
+    db.collection(u'users').document(userids).delete()
     user_data = context.user_data
     user_data.clear()
+    shard_counter.decrement_user(db)
     update.callback_query.answer()
     update.callback_query.edit_message_text(
         text="Reset completed, your details are removed. \n\nType /start to enter your new details!"
@@ -735,24 +689,15 @@ def proceed(update, context):
 def register(update, context):
     update.callback_query.answer()
     update.callback_query.edit_message_text(
-        text="*Okay, please tell me your postal code in six digits.*"
-        "\n\nWe are currently running a trial run and are only operating in:"
-        "\n📍 Choa Chu Kang"
-        "\n📍 Yew Tee"
-        "\n\n_For example: 520123_"
-        "\n\nType /cancel to cancel",
+        text="*Okay, please tell me your postal code in six digits.*"\
+                "\n\nWe are currently running a trial run and are only operating in:"\
+                "\n📍 Choa Chu Kang"\
+                "\n📍 Yew Tee"\
+                "\n\n_For example: 520123_"\
+                "\n\nType /cancel to cancel",
         parse_mode='Markdown',
     )
     return POSTAL
-
-def build_menu(buttons, n_cols, header_buttons=None, footer_buttons=None):
-    menu = [buttons[i:i + n_cols] for i in range(0, len(buttons), n_cols)]
-    if header_buttons:
-        menu.insert(0, header_buttons)
-    if footer_buttons:
-        menu.append(footer_buttons)
-    return menu
-
 
 def postal(update, context):
     postal = update.message.text
@@ -764,7 +709,7 @@ def postal(update, context):
               'getAddrDetails': 'Y'}
 
     invalid_text = "*Invalid postal code, please try again.*"\
-        "\n\nType /cancel to cancel"
+                    "\n\nType /cancel to cancel"
 
     text = "*Please select your address from the following:* \n\n"
 
@@ -776,7 +721,7 @@ def postal(update, context):
             r = requests.get(url=URL, params=PARAMS)
             add_data = r.json()
             if add_data['found'] > 0:
-                context.user_data['Postal code'] = postals
+                context.user_data['Postal code'] = str(postal)
                 keyboard_button = []
                 x = 0
                 text_address = []
@@ -833,10 +778,10 @@ def address(update, context):
     context.user_data['latitude'] = data[2]
     context.user_data['longitude'] = data[3]
     update.callback_query.edit_message_text(
-        text="*Okay, please tell me your unit number:*"
-        "\n_Floor - unit number_"
-        "\nFor example: #01-01"
-        "\n\nType /cancel to cancel",
+        text="*Okay, please tell me your unit number:*"\
+                "\n_Floor - unit number_"\
+                "\nFor example: #01-01"\
+                "\n\nType /cancel to cancel",
         parse_mode='Markdown'
     )
     return UNIT
@@ -845,6 +790,7 @@ def address(update, context):
 def unit(update, context):
     unit = update.message.text
     context.user_data['Unit'] = unit
+    timestamp = str(int(time.time()))
 
     try:
         user_data = context.user_data
@@ -856,14 +802,13 @@ def unit(update, context):
         unit = context.user_data['Unit']
         latitude = context.user_data['latitude']
         longitude = context.user_data['longitude']
-        update.message.reply_text("Your address:\n{}"
-                                  "\nThank you for registering! To change your address,"
+        update.message.reply_text("Your address:\n{}"\
+                                  "\nThank you for registering! To change your address,"\
                                   " navigate to Help in the menu.".format(address_format(user_data)))
 
-        sheet.append_row([userids, username, userfirstname, address,
-                          unit, postal, latitude, longitude], value_input_option="RAW")
+        db.collection(u'users').document(userids).set(Users(userids, username, userfirstname, address, unit, postal, latitude, longitude, timestamp).users_to_dict())
+        shard_counter.increment_user(db)
         user_data.clear()
-
         start(update, context)
         return END
 
@@ -952,7 +897,6 @@ def main():
     # global throughput to 29 messages per 1 second
     q = mq.MessageQueue(all_burst_limit=29, all_time_limit_ms=1000)
     request = Request(con_pool_size=8)
-    TOKEN = os.getenv("TELEGRAM_TOKEN")
 
     # For production deployment
     NAME = "recyclables"
@@ -986,18 +930,11 @@ def main():
 
     # Fourth level (date)
     select_date_level = ConversationHandler(
-        entry_points=[CallbackQueryHandler(
-            date_selection, pattern='^' + str(SELECT_DATE) + '$')],
+        entry_points=[CallbackQueryHandler(date_selection, pattern='^' + str(SELECT_DATE) + '$')],
 
         states={
             DATES: [
-                CallbackQueryHandler(agreement, pattern='^{0}$|^{1}$|^{2}$|^{3}$|^{4}$|^{5}$|^{6}$'.format(("0"),
-                                                                                                           ('1'),
-                                                                                                           ('2'),
-                                                                                                           ('3'),
-                                                                                                           ('4'),
-                                                                                                           ('5'),
-                                                                                                           ('6'))),
+                CallbackQueryHandler(agreement, pattern='^(?!' + str(END) + '$).*$'),
             ],
             AGREEMENT: [confirm_level,
                         CallbackQueryHandler(date_selection, pattern='^' + str(END_AGREEMENT) + '$'), ]
@@ -1228,15 +1165,14 @@ def main():
     dp.add_error_handler(error)
 
     # For production deployment
-    updater.start_webhook(listen="0.0.0.0",
-                          port=int(PORT),
-                          url_path=TOKEN)
-    updater.bot.setWebhook("https://{}.herokuapp.com/{}".format(NAME, TOKEN))
+    # updater.start_webhook(listen="0.0.0.0",
+    #                       port=int(PORT),
+    #                       url_path=TOKEN)
+    # updater.bot.setWebhook("https://{}.herokuapp.com/{}".format(NAME, TOKEN))
 
     # # For local hosting ONLY
-    # updater.start_polling()
-    # updater.idle()
-
+    updater.start_polling()
+    updater.idle()
 
 if __name__ == '__main__':
     main()

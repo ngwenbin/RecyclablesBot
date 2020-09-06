@@ -10,20 +10,28 @@ Our goal is to improve Singapore’s domestic recycling efforts by partnering wi
 
 * Misc
 
-## Requirements
+## Requirements to install (Follow the order)
 
-To install the necessary packages/ modules:
+1. Clone repo
 
-```sh
+2. [Create a virtual environment](https://uoa-eresearch.github.io/eresearch-cookbook/recipe/2014/11/26/python-virtual-env/), your env folder should be in the same directory as your clone.
+
+3. Activate env and install the necessary packages/ modules:
+
+```python
   pip install -r requirements.txt
 ```
-Create your own .env file and paste your own Telegram bot token inside:
-```sh
+4. Create your own .env file and paste your own Telegram bot token + Groupchat id inside:
+```python
 TELEGRAM_TOKEN = YOUR TOKEN
+GROUPCHAT_ID = YOUR GRP CHAT ID
 ```
 
-Remember to comment the following snippet during development. Likewise, uncomment it before making a commit.
-```sh
+
+## Misc
+
+- For production deployment, we are using a webhook to listen for incoming messages. Local testings will use polling. Do take note before commiting.
+```python
 # For production deployment
 updater.start_webhook(listen="0.0.0.0",
                       port=int(PORT),
@@ -31,8 +39,10 @@ updater.start_webhook(listen="0.0.0.0",
 updater.bot.setWebhook("https://{}.herokuapp.com/{}".format(NAME, TOKEN))
 ```
 
-## Misc
+- Updates to the bot must be done via pull request. ***Be careful of editing files in master branch!***
 
-- Updates to the bot must be done via pull request.
+- To get your chatids, userids etc. For groupchat ids, you need to add the bot into the group and then send the /start command. No deployment required.
 
-  Be careful of editing files in master branch!
+```python
+  https://api.telegram.org/bot{YOURBOTTOKEN}/getUpdates/
+```
