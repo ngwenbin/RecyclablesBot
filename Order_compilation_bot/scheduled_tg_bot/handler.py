@@ -51,9 +51,7 @@ def clearsat(event, context):
 
 def get_orders():
     ## gspread
-    scope = ["https://spreadsheets.google.com/feeds","https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
-    gc = gspread.authorize(creds)
+    gc = gspread.service_account(filename='credentials.json')
 
     sheet = gc.open("Recyclables (Database)").worksheet("Orders")
     data = sheet.get_all_values()
@@ -79,8 +77,10 @@ def send_message(event, context):
     # TEST_CHATID = os.getenv("TEST_CHATID")
 
     bot = telegram.Bot(token = TOKEN)
+    # bot = telegram.Bot(token = TEST_TOKEN)
     bot.sendMessage(
         chat_id = CHAT_ID,
+        # chat_id = TEST_CHATID,
         text = "*🚨 These are your orders for today:*\n\n" + get_orders(),
         parse_mode ='Markdown'
     )
