@@ -1,6 +1,53 @@
 import telegram, sys, os, gspread
 import pandas as pd
 from oauth2client.service_account import ServiceAccountCredentials
+from google.cloud import firestore
+
+"""
+Distributed shards counter to allow more than 1 writes per second.
+"""
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credentials.json"
+db = firestore.Client()
+class Shard(object):
+    def __init__(self):
+        self._countfri = 0
+        self._countsat = 0
+        self._totalorders = 0
+        self._totalusers = 0
+
+    def to_dict(self):
+        return {"count_fri": self._countfri,
+                "count_sat": self._countsat,
+                "totalorders": self._totalorders,
+                "totalusers": self._totalusers}
+
+class Counter(object):
+    def __init__(self, num_shards):
+        self._num_shards = num_shards
+
+    def init_counter(self, doc_ref):
+        col_ref = doc_ref.collection("shards")
+        for num in range(self._num_shards):
+            shard = Shard()
+            col_ref.document(str(num)).set(shard.to_dict())
+
+    def clear_friday(self, doc_ref):
+        for i in range(self._num_shards):
+            shard_ref = doc_ref.collection(u'shards').document(str(i))
+            shard_ref.update({"count_fri": 0})
+
+    def clear_saturday(self, doc_ref):
+        for i in range(self._num_shards):
+            shard_ref = doc_ref.collection(u'shards').document(str(i))
+            shard_ref.update({"count_sat": 0})
+
+shard_counter = Counter(10)
+
+def clearfri(event, context):
+    shard_counter.clear_friday(db)
+
+def clearsat(event, context):
+    shard_counter.clear_saturday(db)
 
 def get_orders():
     ## gspread
@@ -26,8 +73,10 @@ def get_orders():
     return final_orders
 
 def send_message(event, context):
-    TOKEN = '1086519799:AAE4YR2kZWP6dicS5AmKDGUgTKzYFSJLnEc'
-    CHAT_ID = -1001427022537
+    TOKEN = os.getenv("TELEGRAM_TOKEN")
+    CHAT_ID = os.getenv("CHAT_ID")
+    # TEST_TOKEN = os.getenv("TEST_TOKEN")
+    # TEST_CHATID = os.getenv("TEST_CHATID")
 
     bot = telegram.Bot(token = TOKEN)
     bot.sendMessage(

@@ -64,6 +64,20 @@ functions:
     handler: handler.send_message
     events:
       - schedule: cron(0 18 ? * THU-FRI *)
+    environment:
+      TELEGRAM_TOKEN: ${param:TELEGRAM_TOKEN}
+      CHAT_ID: ${param:CHAT_ID}
+      # TEST_TOKEN: ${param:TEST_TOKEN}
+      # TEST_CHATID: ${param:TEST_CHATID}
+  clearFri:
+    handler: handler.clearfri
+    events:
+      - schedule: cron(0 16 ? * THU *)
+  clearSat:
+    handler: handler.clearsat
+    events:
+      - schedule: cron(0 16 ? * FRI *)
+
 # cron(MM HH DayofMonth Month DayofWeek Year)
 
 #    The following are a few example events you can configure
