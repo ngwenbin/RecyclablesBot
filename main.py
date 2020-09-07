@@ -23,6 +23,7 @@ db = firestore.Client() # initiates firestore db client
 shard_counter = Counter(10) # Initiates shard counts
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 GRPCHATID = os.getenv("GROUPCHAT_ID")
+API_TOKEN = os.getenv("API_TOKEN")
 userdatas = {} # global user dict
 
 class MQBot(telegram.bot.Bot): # Class handler for message queue
@@ -387,14 +388,14 @@ def date_selection(update, context):
         chat_id=update.effective_message.chat_id, action=ChatAction.TYPING)
     context.user_data[START_OVER] = True
     URL = "https://us-central1-recyclables-telegram-bot.cloudfunctions.net/app/api/getDates/5/6"
-
+    headers = {"Authorization": "Bearer " + API_TOKEN}
     try:
         gc.login()
         sheet3 = gc.open("Recyclables (Database)").worksheet("Postals")
         sheet3.find(userdatas['postal'])
 
         if context.user_data.get(BASKET):
-            r = requests.get(url=URL)
+            r = requests.get(url=URL, headers=headers)
             date_data = r.json()
             keyboard_button = []
 
