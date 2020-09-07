@@ -549,7 +549,7 @@ def success(update, context):
                      parse_mode="Markdown",
                      text=order_text+item_text+collection_add+collection_detail)
 
-    db.collection(u'orders').document(ordernum).set(Orders(userids, username, ordernum, item, timeslot, timestamp).orders_to_dict())
+    db.collection(u'orders').document(ordernum).set(Orders(userids, username, ordernum, item, timeslot, timestamp, full_address).orders_to_dict())
     shard_counter.increment_order(db)
     sheet2.append_row([ordernum, userids, item, timeslot, full_address], value_input_option="RAW")
     user_data.clear()
