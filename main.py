@@ -133,7 +133,7 @@ def start(update, context):
                     "\n📍 Choa Chu Kang"\
                     "\n📍 Yew Tee"\
                     "\n\n*Would you like to proceed?*"\
-                    "\n\nType /cancel to exit the bot."
+                    "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding."
 
     basket_text = "\n\n_You still have item(s) in your basket.\nDon't forget!_"
 
@@ -201,7 +201,7 @@ def recycle(update, context):
     update.callback_query.answer()
     update.callback_query.edit_message_text(
         text="Please select the type of recyclables\n you wish to recycle:"\
-        "\n\nType /cancel to exit the bot.",
+        "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding.",
         reply_markup=reply_markup
     )
     return RECYCLABLES
@@ -227,7 +227,7 @@ def papers(update, context):
                 "\nClick [here](https://i.imgur.com/6zd9K5P.png)!"\
                 "\n\n*IMPORTANT: Please remove any plastic covers/binders etc and our Karung guni uncles would really "\
                 "appreciate if you can separate any* [waxy-shiny paperback covers on textbooks/ books](https://i.imgur.com/euQGxUb.png) *if POSSIBLE.*"\
-                "\n\nType /cancel to exit the bot.".format(paperprice)),
+                "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding.".format(paperprice)),
         parse_mode='Markdown',
         reply_markup=reply_markup,
         disable_web_page_preview=True
@@ -253,7 +253,7 @@ def clothes(update, context):
                 "\n_${} per KG_"\
                 "\n\n*IMPORTANT: We only accept normal civilian clothings as they are meant to be reused. "\
                 "Items such as but not limited to school/ work uniforms, canvas bags etc are not acceptable*"\
-                "\n\nType /cancel to exit the bot.".format(clothesprice)),
+                "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding.".format(clothesprice)),
         parse_mode='Markdown',
         reply_markup=reply_markup,
         disable_web_page_preview=True
@@ -342,7 +342,7 @@ def item_basket(update, context):
     update.callback_query.answer()
     update.callback_query.edit_message_text(
         text=("*Your current recyclables:*\n{}"\
-                "\n\nType /cancel to exit the bot.".format(item_format(user_data))),
+                "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding.".format(item_format(user_data))),
         parse_mode='Markdown',
         reply_markup=reply_markup
     )
@@ -414,7 +414,7 @@ def date_selection(update, context):
 
             else:
                 text = "*We are fully booked! Please try again next week!*"\
-                        "\n\nType /cancel to exit the bot."
+                        "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding."
 
                 update.callback_query.edit_message_text(
                     text=text,
@@ -438,7 +438,7 @@ def date_selection(update, context):
                 "\n📍 Choa Chu Kang"\
                 "\n📍 Yew Tee"\
                 "\n\nFollow us on [Instagram](https://www.instagram.com/recyclables.sg/) or [Facebook](https://www.facebook.com/recyclables.sg/) for updates!"\
-                "\n\nType /cancel to exit the bot"
+                "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding."
         keyboard = [[InlineKeyboardButton("« Back to item basket", callback_data=str(END))]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         update.callback_query.answer()
@@ -467,7 +467,7 @@ def agreement(update, context):
         text="*Please do ensure your recyclables are reasonably accurate to the weight indicated*."\
                 "\n\nBy proceeding you agree that your items are within our requirements and our Karung Guni uncles have the right to refuse them if they are not."\
                 "\n\nCollection timing will be between 11am to 2pm."\
-                "\n\nType /cancel to exit the bot.",
+                "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding.",
         parse_mode='Markdown',
         reply_markup=reply_markup
     )
@@ -490,7 +490,7 @@ def basket_confirm(update, context):
             "\n11am to 2pm".format(item_format(user_data),
                                    full_address,
                                    days))
-    end_text = "\n\nType /cancel to exit the bot."
+    end_text = "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding."
     keyboard = [[InlineKeyboardButton("🛒  Checkout", callback_data=str(CHECKOUT)),
                  InlineKeyboardButton("« Back", callback_data=str(END))]
                 ]
@@ -534,7 +534,7 @@ def success(update, context):
     collection_detail = ("\n\n*Collection details:*\n{0}"\
                          "\n11am to 2pm".format(timeslot))
 
-    end_text = "\n\n_See FAQ should you need any help_"
+    end_text = "\n\n_Message @RecyclablesHelpBot on Telegram for any order related enquiries!_"
 
     update.callback_query.answer()
     update.callback_query.edit_message_text(
@@ -576,7 +576,7 @@ def info(update, context):
     update.callback_query.answer()
     update.callback_query.edit_message_text(
         text="What info would you like to see?"
-        "\n\nType /cancel to exit the bot.",
+        "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding.",
         reply_markup=reply_markup
     )
     return INFOS
@@ -587,7 +587,8 @@ def info_privacy(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.answer()
     update.callback_query.edit_message_text(
-        text="We treat your data very seriously. Do visit our [Facebook](https://www.facebook.com/recyclables.sg/) page for more information.",
+        text="We treat your data very seriously. Do visit our [Facebook](https://www.facebook.com/recyclables.sg/) page for more information."\
+                "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding.",
         reply_markup=reply_markup,
         parse_mode='Markdown',
         disable_web_page_preview=True
@@ -607,7 +608,8 @@ def info_about(update, context):
                 "via a digital platform, household recycling is "\
                 "made more convenient and at the same time, "\
                 "it reduces recycling waste contamination which "\
-                "makes recycling overall more effective.",
+                "makes recycling overall more effective."\
+                "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding.",
 
         reply_markup=reply_markup
     )
@@ -623,8 +625,8 @@ def helps(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.answer()
     update.callback_query.edit_message_text(
-        text="How can I help you? 😊"
-             "\n\nType /cancel to exit the bot.",
+        text="How can I help you? 😊"\
+             "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding.",
         reply_markup=reply_markup
     )
     return HELPS
@@ -635,7 +637,9 @@ def helps_faq(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.answer()
     update.callback_query.edit_message_text(
-        text="Our FAQ can be found on our [Facebook page](https://www.facebook.com/recyclables.sg/).",
+        text="Our FAQ can be found on our [Facebook page](https://www.facebook.com/recyclables.sg/).\n\n"\
+                " Alternatively, you can message @RecyclablesHelpBot on Telegram for any enquiries!"\
+                "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding.",
         reply_markup=reply_markup,
         parse_mode='Markdown',
         disable_web_page_preview=True
@@ -651,7 +655,8 @@ def helps_contact(update, context):
         text="Feel free to reach us at the following channels!"\
                 "\n\n*Email*: help@recyclables.sg"\
                 "\n*Instagram* : [@recyclables.sg](https://www.instagram.com/recyclables.sg/)"\
-                "\n*Facebook*: [recyclables.sg](https://www.facebook.com/recyclables.sg/)",
+                "\n*Facebook*: [recyclables.sg](https://www.facebook.com/recyclables.sg/)"\
+                "\n*Telegram: *@RecyclablesHelpBot",
         reply_markup=reply_markup,
         parse_mode='Markdown',
         disable_web_page_preview=True
@@ -709,7 +714,7 @@ def postal(update, context):
               'getAddrDetails': 'Y'}
 
     invalid_text = "*Invalid postal code, please try again.*"\
-                    "\n\nType /cancel to cancel"
+                    "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding."
 
     text = "*Please select your address from the following:* \n\n"
 
@@ -744,7 +749,7 @@ def postal(update, context):
                 update.message.reply_text(
                     text=text +
                     final_address_format(text_address) +
-                    "\n\nType /cancel to cancel",
+                    "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding.",
                     parse_mode='Markdown',
                     reply_markup=reply_markup,
                     disable_web_page_preview=True,
@@ -781,7 +786,7 @@ def address(update, context):
         text="*Okay, please tell me your unit number:*"\
                 "\n_Floor - unit number_"\
                 "\nFor example: #01-01"\
-                "\n\nType /cancel to cancel",
+                "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding.",
         parse_mode='Markdown'
     )
     return UNIT
