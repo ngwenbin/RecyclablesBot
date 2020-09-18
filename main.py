@@ -396,10 +396,10 @@ def date_selection(update, context):
 
         if context.user_data.get(BASKET):
             r = requests.get(url=URL, headers=headers)
-            date_data = r.json()
-            keyboard_button = []
+            try:
+                date_data = r.json()
+                keyboard_button = []
 
-            if 'dates' in date_data:
                 for i in date_data['dates']:
                     keyboard_button.append(InlineKeyboardButton(i, callback_data=i))
 
@@ -412,7 +412,7 @@ def date_selection(update, context):
                     reply_markup=reply_markup
                 )
 
-            else:
+            except:
                 text = "*We are fully booked! Please try again next week!*"\
                         "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding."
 
