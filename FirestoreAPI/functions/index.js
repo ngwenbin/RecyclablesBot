@@ -88,8 +88,8 @@ app.get('/api/getDates/:day1/:day2', (req, res) => {
 
       // Count the number of orders
       let query = db.collection('shards');
-      let friCount = 0
-      let satCount = 0
+      let friCount = 0;
+      let satCount = 0;
       await query.get().then(querySnapshot => {
         let docs = querySnapshot.docs; //all the orders
 
@@ -101,13 +101,19 @@ app.get('/api/getDates/:day1/:day2', (req, res) => {
       })
       let friSlots = 10 - friCount;
       let satSlots = 10 - satCount;
+      let firstSatMonth = new Date();
+      firstSatMonth = new Date(firstSatMonth.setDate(date2.getDate() + 7));
+      if (firstSatMonth.getDate().toString().length == 1 && firstSatMonth.getDate() <= 7) {
+        satSlots = 0;
+      }
       // Check if there are slots
       if (friSlots) {
         returnDates.push(date1);
       }
       if (satSlots) {
         returnDates.push(date2);
-      } else {
+      }
+      if (!friSlots && !satSlots) {
         response = "*Sorry, our collection slots are full, please try again next week!* \n\nType /cancel to exit the bot.";
       }
 
