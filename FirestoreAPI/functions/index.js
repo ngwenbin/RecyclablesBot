@@ -33,7 +33,7 @@ const validateFirebaseIdToken = async (req, res, next) => {
     api_key = req.cookies.__session;
   } else {
     // No token and no cookie
-    return res.status(401).send({ message: 'Unauthorized' });
+    res.status(401).send({ message: 'Unauthorized' });
   }
 
   try {
@@ -45,11 +45,11 @@ const validateFirebaseIdToken = async (req, res, next) => {
       next();
       return;
     } else {
-      return res.status(401).send({ message: 'Unauthorized' });
+      res.status(401).send({ message: 'Unauthorized' });
     }
   } catch (error) {
     console.error('Error while verifying Firebase ID Token:', error);
-    return res.status(401).send({ message: 'Unauthorized' });
+    res.status(401).send({ message: 'Unauthorized' });
     // return;
   }
 };
@@ -103,7 +103,7 @@ app.get('/api/getDates/:day1/:day2', (req, res) => {
       let satSlots = 10 - satCount;
       let firstSatMonth = new Date();
       firstSatMonth = new Date(firstSatMonth.setDate(date2.getDate() + 7));
-      if (firstSatMonth.getDate().toString().length == 1 && firstSatMonth.getDate() <= 7) {
+      if (firstSatMonth.getDate().toString().length === 1 && firstSatMonth.getDate() <= 7) {
         satSlots = 0;
       }
       // Check if there are slots
