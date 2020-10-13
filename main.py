@@ -58,18 +58,18 @@ INFOS, ABOUT, PRIVACY, END_INFO = map(chr, range(17, 21))
 # Second level states
 RECYCLABLES, ITEM_PAPERS, ITEM_ELECTRONICS, ITEM_CLOTHES = map(chr, range(21, 25))
 # Second level states - past orders
-MY_ORDERS, END_MY_ORDERS = map(chr, range(25, 27))
+MY_ORDERS, CHECK_ORDERS, END_MY_ORDERS = map(chr, range(25, 28))
 # Third level states
-WEIGHT, CONFIRM, SELECT_DATE, CLEAR_ITEM, CLEAR, END_CLEAR, END_ELECTRONICS = map(chr, range(27, 34))
+WEIGHT, CONFIRM, SELECT_DATE, CLEAR_ITEM, CLEAR, END_CLEAR, END_ELECTRONICS = map(chr, range(28, 35))
 # Fourth level states
-DATES, AGREEMENT, END_AGREEMENT = map(chr, range(34, 37))
+DATES, AGREEMENT, END_AGREEMENT = map(chr, range(35, 38))
 # Fifth level states
-CONFIRM_ORDER, CHECKOUT = map(chr, range(37, 39))
+CONFIRM_ORDER, CHECKOUT = map(chr, range(38, 40))
 # Constants
 (START_OVER, PAPERS, CLOTHES, DAYS, TIMES, BASKET,
- ITEM_TYPE, ROW, FULL_ADDRESS) = map(chr, range(39, 48))
+ ITEM_TYPE, ROW, FULL_ADDRESS) = map(chr, range(40, 49))
 # Meta states
-STOPPING = map(chr, range(48, 49))
+STOPPING = map(chr, range(49, 50))
 # Paper meta states
 PAPER1, PAPER2, PAPER3, PAPER4 = map(chr, range(4))
 # Clothes meta states
@@ -194,14 +194,25 @@ def start(update, context):
             return REGISTER
 
 
+def my_order(update, context):
+    keyboard = [[InlineKeyboardButton("📋 Check My Orders (Testing)", callback_data=str(CHECK_ORDERS))],
+                [InlineKeyboardButton("« Back", callback_data=str(END))]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.callback_query.answer()
+    update.callback_query.edit_message_text(
+        text="Hi, what would you like to do?",
+        reply_markup=reply_markup
+    )
+    return MY_ORDERS
+
 def check_past_orders(update, context):
     userids = str(update.effective_user.id)
     keyboard = [[InlineKeyboardButton("« Back", callback_data=str(END))]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     # get all orders whose userid field == current user
-    orders_collection_ref = db.collection(u'orders').where(u'userid', u'==', userids).stream()
+    # orders_collection_ref = db.collection(u'orders').where(u'userid', u'==', userids).stream()
     # test on user ids in orders collection
-    # orders_collection_ref = db.collection(u'orders').where(u'userid', u'==', '1298210408').stream()
+    orders_collection_ref = db.collection(u'orders').where(u'userid', u'==', '1298210408').stream()
     ordersString = ''
     i = 1
     for order in orders_collection_ref:
@@ -1081,11 +1092,13 @@ def main():
     # Second level (Item selection)
     orders_level = ConversationHandler(
         entry_points=[CallbackQueryHandler(
-            check_past_orders, pattern='^' + str(MY_ORDER) + '$')],
+            my_order, pattern='^' + str(MY_ORDER) + '$')],
 
         states={
             MY_ORDERS: [
                 CallbackQueryHandler(check_past_orders, pattern='^' +
+                                     str(CHECK_ORDERS) + '$'),
+                CallbackQueryHandler(my_order, pattern='^' +
                                      str(END_MY_ORDERS) + '$'),
             ]
         },
