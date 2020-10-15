@@ -236,12 +236,12 @@ def recycle(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.answer()
     update.callback_query.edit_message_text(
-        text="Please select the type of recyclables\n you wish to recycle:"\
+        text="Please select the type of hrecyclables\n you wish to recycle:"\
         "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding.",
         reply_markup=reply_markup
     )
     return RECYCLABLES
-
+owiejf;asdkfjweifas;dlkfjwoeija;sldkfjwoeifj;lksdjfowiej;aliejfiejflskdjfoweijflsdkfja;woeijfa;sdlkffjeijf;slkdjfwoeijfa;sdkfjweoifjasdlkfjas;ldfkj
 
 def papers(update, context):
     update.callback_query.answer(
@@ -1230,14 +1230,14 @@ def main():
     dp.add_error_handler(error)
 
     # For production deployment
-    # updater.start_webhook(listen="0.0.0.0",
-    #                       port=int(PORT),
-    #                       url_path=TOKEN)
-    # updater.bot.setWebhook("https://{}.herokuapp.com/{}".format(NAME, TOKEN))
+    updater.start_webhook(listen="0.0.0.0",
+                          port=int(PORT),
+                          url_path=TOKEN)
+    updater.bot.setWebhook("https://{}.herokuapp.com/{}".format(NAME, TOKEN))
 
     # For local hosting ONLY
-    updater.start_polling()
-    updater.idle()
+    # updater.start_polling()
+    # updater.idle()
 
 if __name__ == '__main__':
     main()
