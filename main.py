@@ -48,26 +48,28 @@ class MQBot(telegram.bot.Bot): # Class handler for message queue
 # ------------- State management -------------
 
 # First level states
-REGISTER, REGISTERYES, REGISTERNO, MAIN_MENU, RECYCLE, INFO, HELP,  = map(chr, range(7))
+REGISTER, REGISTERYES, REGISTERNO, MAIN_MENU, RECYCLE, INFO, HELP, MY_ORDER = map(chr, range(8))
 # Sub second level state
-POSTAL, ADDRESS, UNIT = map(chr, range(7, 10))
+POSTAL, ADDRESS, UNIT = map(chr, range(8, 11))
 # Second level states
-HELPS, FAQ, CONTACT, CHANGE_ADDRESS, END_HELPS, PROCEED = map(chr, range(10, 16))
+HELPS, FAQ, CONTACT, CHANGE_ADDRESS, END_HELPS, PROCEED = map(chr, range(11, 17))
 # Second level states
-INFOS, ABOUT, PRIVACY, END_INFO = map(chr, range(16, 20))
+INFOS, ABOUT, PRIVACY, END_INFO = map(chr, range(17, 21))
 # Second level states
-RECYCLABLES, ITEM_PAPERS, ITEM_ELECTRONICS, ITEM_CLOTHES = map(chr, range(20, 24))
+RECYCLABLES, ITEM_PAPERS, ITEM_ELECTRONICS, ITEM_CLOTHES = map(chr, range(21, 25))
+# Second level states - past orders
+MY_ORDERS, CHECK_ORDERS, END_MY_ORDERS = map(chr, range(25, 28))
 # Third level states
-WEIGHT, CONFIRM, SELECT_DATE, CLEAR_ITEM, CLEAR, END_CLEAR, END_ELECTRONICS = map(chr, range(24, 31))
+WEIGHT, CONFIRM, SELECT_DATE, CLEAR_ITEM, CLEAR, END_CLEAR, END_ELECTRONICS = map(chr, range(28, 35))
 # Fourth level states
-DATES, AGREEMENT, END_AGREEMENT = map(chr, range(31, 34))
+DATES, AGREEMENT, END_AGREEMENT = map(chr, range(35, 38))
 # Fifth level states
-CONFIRM_ORDER, CHECKOUT = map(chr, range(34, 36))
+CONFIRM_ORDER, CHECKOUT = map(chr, range(38, 40))
 # Constants
 (START_OVER, PAPERS, CLOTHES, DAYS, TIMES, BASKET,
- ITEM_TYPE, ROW, FULL_ADDRESS) = map(chr, range(36, 45))
+ ITEM_TYPE, ROW, FULL_ADDRESS) = map(chr, range(40, 49))
 # Meta states
-STOPPING = map(chr, range(45, 46))
+STOPPING = map(chr, range(49, 50))
 # Paper meta states
 PAPER1, PAPER2, PAPER3, PAPER4 = map(chr, range(4))
 # Clothes meta states
@@ -140,6 +142,7 @@ def start(update, context):
     main_keyboard = [[InlineKeyboardButton("♻️  Start recycling!", callback_data=str(RECYCLE))],
                      [InlineKeyboardButton( "📋  Info", callback_data=str(INFO))],
                      [InlineKeyboardButton("🙋🏻‍♀️  Help", callback_data=str(HELP))],
+                     [InlineKeyboardButton("📋 My Orders (Testing)", callback_data=str(MY_ORDER))],
                      [InlineKeyboardButton("« Exit", callback_data=str(END))]]
 
     main_markup = InlineKeyboardMarkup(main_keyboard)
@@ -191,6 +194,39 @@ def start(update, context):
             return REGISTER
 
 
+def my_order(update, context):
+    keyboard = [[InlineKeyboardButton("📋 Check My Orders (Testing)", callback_data=str(CHECK_ORDERS))],
+                [InlineKeyboardButton("« Back", callback_data=str(END))]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.callback_query.answer()
+    update.callback_query.edit_message_text(
+        text="Hi, what would you like to do?",
+        reply_markup=reply_markup
+    )
+    return MY_ORDERS
+
+def check_past_orders(update, context):
+    userids = str(update.effective_user.id)
+    keyboard = [[InlineKeyboardButton("« Back", callback_data=str(END))]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    # get all orders whose userid field == current user
+    # orders_collection_ref = db.collection(u'orders').where(u'userid', u'==', userids).stream()
+    # test on user ids in orders collection
+    orders_collection_ref = db.collection(u'orders').where(u'userid', u'==', '1298210408').stream()
+    ordersString = ''
+    i = 1
+    for order in orders_collection_ref:
+        # is there more efficient concatenation methods?
+        strings = ["\nOrder", str(i), ": \nAddress: ", f'{order.to_dict().get("address")}', "\nRecycling: ", f'{order.to_dict().get("item")}', "\nDate: ", f'{order.to_dict().get("timeslot")}']
+        ordersString = ordersString + ' '.join(strings)
+        i += 1
+    update.callback_query.answer()
+    update.callback_query.edit_message_text(
+        text="Here are your order details: " + ordersString,
+        reply_markup=reply_markup
+    )
+    return MY_ORDERS
+
 def recycle(update, context):
     keyboard = [[InlineKeyboardButton("🗞  Papers ", callback_data=str(ITEM_PAPERS))],
                 [InlineKeyboardButton("👕  Clothes ", callback_data=str(ITEM_CLOTHES))],
@@ -200,12 +236,12 @@ def recycle(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.answer()
     update.callback_query.edit_message_text(
-        text="Please select the type of recyclables\n you wish to recycle:"\
+        text="Please select the type of hrecyclables\n you wish to recycle:"\
         "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding.",
         reply_markup=reply_markup
     )
     return RECYCLABLES
-
+owiejf;asdkfjweifas;dlkfjwoeija;sldkfjwoeifj;lksdjfowiej;aliejfiejflskdjfoweijflsdkfja;woeijfa;sdlkffjeijf;slkdjfwoeijfa;sdkfjweoifjasdlkfjas;ldfkj
 
 def papers(update, context):
     update.callback_query.answer(
@@ -1054,6 +1090,29 @@ def main():
         }
     )
     # Second level (Item selection)
+    orders_level = ConversationHandler(
+        entry_points=[CallbackQueryHandler(
+            my_order, pattern='^' + str(MY_ORDER) + '$')],
+
+        states={
+            MY_ORDERS: [
+                CallbackQueryHandler(check_past_orders, pattern='^' +
+                                     str(CHECK_ORDERS) + '$'),
+                CallbackQueryHandler(my_order, pattern='^' +
+                                     str(END_MY_ORDERS) + '$'),
+            ]
+        },
+        fallbacks=[
+            CallbackQueryHandler(end_second, pattern='^' + str(END) + '$'),
+            CommandHandler('cancel', end_nested)
+        ],
+
+        map_to_parent={
+            STOPPING: END,
+            END: MAIN_MENU
+        }
+    )
+    # Second level (Item selection)
     helps_level = ConversationHandler(
         entry_points=[CallbackQueryHandler(
             helps, pattern='^' + str(HELP) + '$')],
@@ -1158,13 +1217,14 @@ def main():
                 recycle_level,
                 info_level,
                 helps_level,
+                orders_level,
                 CallbackQueryHandler(end, pattern='^' + str(END) + '$')],
 
         },
 
         fallbacks=[CommandHandler('cancel', cancel)],
     )
-    conv_handler.states[RECYCLABLES, INFOS, HELPS] = conv_handler.states[MAIN_MENU]
+    conv_handler.states[RECYCLABLES, INFOS, HELPS, MY_ORDERS] = conv_handler.states[MAIN_MENU]
     conv_handler.states[STOPPING] = conv_handler.entry_points
     dp.add_handler(conv_handler)
     dp.add_error_handler(error)
@@ -1175,7 +1235,7 @@ def main():
                           url_path=TOKEN)
     updater.bot.setWebhook("https://{}.herokuapp.com/{}".format(NAME, TOKEN))
 
-    # # For local hosting ONLY
+    # For local hosting ONLY
     # updater.start_polling()
     # updater.idle()
 
