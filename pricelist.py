@@ -1,5 +1,16 @@
-paperprice = 0.06
-clothesprice = 0.20
+def get_paper_price(API_TOKEN,requests):
+    regionid = "1" #update later
+    URL = "https://us-central1-recyclables-telegram-bot.cloudfunctions.net/app/api/getPrices/"+regionid
+    headers = {"Authorization": "Bearer " + API_TOKEN}
+    r = requests.get(url=URL+"/2", headers=headers)
+    return(r.json()['price'])
+
+def get_clothes_price(API_TOKEN,requests):
+    regionid = "1" #update later
+    URL = "https://us-central1-recyclables-telegram-bot.cloudfunctions.net/app/api/getPrices/"+regionid
+    headers = {"Authorization": "Bearer " + API_TOKEN}
+    r = requests.get(url=URL+"/1", headers=headers)
+    return(r.json()['price'])
 
 def price_point(item, low, high):
     if item == "papers":
