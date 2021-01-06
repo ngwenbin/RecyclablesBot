@@ -1,26 +1,7 @@
-def get_paper_price(API_TOKEN,requests):
-    regionid = "1" #update later
-    URL = "https://us-central1-recyclables-telegram-bot.cloudfunctions.net/app/api/getPrices/"+regionid
-    headers = {"Authorization": "Bearer " + API_TOKEN}
-    r = requests.get(url=URL+"/2", headers=headers)
-    return(r.json()['price'])
+import requests
 
-def get_clothes_price(API_TOKEN,requests):
-    regionid = "1" #update later
-    URL = "https://us-central1-recyclables-telegram-bot.cloudfunctions.net/app/api/getPrices/"+regionid
+def get_price(regionid, itemid, API_TOKEN):
+    URL = "https://us-central1-recyclables-telegram-bot.cloudfunctions.net/app/api/getPrices/"+regionid+"/"+itemid
     headers = {"Authorization": "Bearer " + API_TOKEN}
-    r = requests.get(url=URL+"/1", headers=headers)
+    r = requests.get(url=URL, headers=headers)
     return(r.json()['price'])
-
-def price_point(item, low, high):
-    if item == "papers":
-        price = paperprice
-    else:
-        price = clothesprice
-    price_text =''
-    for x in range(low, high):
-        price_text += ("{0}KG to {1}KG: ${2:.2f} to ${3:.2f}\n".format((x)*10,
-                                                                        (x+1)*10,
-                                                                        (x)*10*price,
-                                                                        (x+1)*10*price))
-    return price_text
