@@ -215,6 +215,7 @@ def recycle(update, context):
 
 
 def papers(update, context):
+    #paperprice = pricelist.get_price(userdatas['regionid'], "2", API_TOKEN)
     paperprice = pricelist.get_price("1", "2", API_TOKEN)
     update.callback_query.answer(
         text="Do note that we do not accept cardboards/ cartons.",
@@ -244,7 +245,8 @@ def papers(update, context):
 
 
 def clothes(update, context):
-    clothesprice = pricelist.get_price("1", "2", API_TOKEN)
+    #clothesprice = pricelist.get_price(userdatas['regionid'], "1", API_TOKEN)
+    clothesprice = pricelist.get_price("1", "1", API_TOKEN)
     update.callback_query.answer(
         text="We only accept normal civilian clothings as they are meant to be reused. Items such as but not limited to school/ work uniforms, canvas bags etc are not acceptable",
         show_alert=True)
@@ -304,8 +306,10 @@ def electronics(update, context):
 def _item_text(item):
     paperTypes = [PAPER1, PAPER2, PAPER3, PAPER4]
     clothesTypes = [CLOTHES1, CLOTHES2, CLOTHES3, CLOTHES4]
+    #paperprice = pricelist.get_price(userdatas['regionid'], "2", API_TOKEN)
     paperprice = pricelist.get_price("1", "2", API_TOKEN)
-    clothesprice = pricelist.get_price("1", "2", API_TOKEN)
+    #clothesprice = pricelist.get_price(userdatas['regionid'], "1", API_TOKEN)
+    clothesprice = pricelist.get_price("1", "1", API_TOKEN)
 
     if item in paperTypes:
         pos = paperTypes.index(item) + 1
@@ -1310,14 +1314,14 @@ def main():
     dp.add_error_handler(error)
 
     # For production deployment
-    #updater.start_webhook(listen="0.0.0.0",
-    #                      port=int(PORT),
-    #                      url_path=TOKEN)
-    #updater.bot.setWebhook("https://{}.herokuapp.com/{}".format(NAME, TOKEN))
+    updater.start_webhook(listen="0.0.0.0",
+                          port=int(PORT),
+                          url_path=TOKEN)
+    updater.bot.setWebhook("https://{}.herokuapp.com/{}".format(NAME, TOKEN))
 
     # For local hosting ONLY
-    updater.start_polling()
-    updater.idle()
+    #updater.start_polling()
+    #updater.idle()
 
 if __name__ == '__main__':
     main()
