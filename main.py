@@ -9,7 +9,8 @@ from google.cloud import firestore
 from shards import Shard, Counter
 from order import Orders
 from user import Users
-from pricelist import paperprice, clothesprice
+import pricelist 
+from datetime import datetime
 
 # load env file
 load_dotenv()
@@ -25,7 +26,7 @@ TOKEN = os.getenv("TELEGRAM_TOKEN")
 GRPCHATID = os.getenv("GROUPCHAT_ID")
 API_TOKEN = os.getenv("API_TOKEN")
 userdatas = {} # global user dict
-
+cancelledorders = {}
 class MQBot(telegram.bot.Bot): # Class handler for message queue
 
     def __init__(self, *args, is_queued_def=True, mqueue=None, **kwargs):
@@ -48,7 +49,7 @@ class MQBot(telegram.bot.Bot): # Class handler for message queue
 # ------------- State management -------------
 
 # First level states
-REGISTER, REGISTERYES, REGISTERNO, MAIN_MENU, RECYCLE, INFO, HELP, MY_ORDER = map(chr, range(8))
+REGISTER, REGISTERYES, REGISTERNO, MAIN_MENU, RECYCLE, INFO, HELP, MY_ORDER  = map(chr, range(8))
 # Sub second level state
 POSTAL, ADDRESS, UNIT = map(chr, range(8, 11))
 # Second level states
@@ -56,11 +57,12 @@ HELPS, FAQ, CONTACT, CHANGE_ADDRESS, END_HELPS, PROCEED = map(chr, range(11, 17)
 # Second level states
 INFOS, ABOUT, PRIVACY, END_INFO = map(chr, range(17, 21))
 # Second level states
-RECYCLABLES, ITEM_PAPERS, ITEM_ELECTRONICS, ITEM_CLOTHES = map(chr, range(21, 25))
-# Second level states - past orders
-MY_ORDERS, CHECK_ORDERS, END_MY_ORDERS = map(chr, range(25, 28))
+MY_ORDERS, CHECK_ORDERS, END_PAST_ORDERS = map(chr,range(21,24))
+# Second level states
+RECYCLABLES, ITEM_PAPERS, ITEM_ELECTRONICS, ITEM_CLOTHES = map(chr, range(24, 28))
 # Third level states
-WEIGHT, CONFIRM, SELECT_DATE, CLEAR_ITEM, CLEAR, END_CLEAR, END_ELECTRONICS = map(chr, range(28, 35))
+(WEIGHT, CONFIRM, SELECT_DATE, CLEAR_ITEM, CLEAR, END_CLEAR,
+ END_ELECTRONICS) = map(chr, range(28, 35))
 # Fourth level states
 DATES, AGREEMENT, END_AGREEMENT = map(chr, range(35, 38))
 # Fifth level states
@@ -69,13 +71,15 @@ CONFIRM_ORDER, CHECKOUT = map(chr, range(38, 40))
 (START_OVER, PAPERS, CLOTHES, DAYS, TIMES, BASKET,
  ITEM_TYPE, ROW, FULL_ADDRESS) = map(chr, range(40, 49))
 # Meta states
-STOPPING = map(chr, range(49, 50))
+STOPPING = map(chr, range(50,51))
 # Paper meta states
 PAPER1, PAPER2, PAPER3, PAPER4 = map(chr, range(4))
 # Clothes meta states
 CLOTHES1, CLOTHES2, CLOTHES3, CLOTHES4 = map(chr, range(4, 8))
 # Choices meta states
 CHOICE1, CHOICE2 = map(chr, range(8, 10))
+# Order cancelleation states
+CANCEL_ORDERS, CANCEL_VIEW, CANCEL_CONFIRMATION, CANCELYES, END_CANCEL,END_CANCELVIEW = map(chr,range(10,16))
 
 END = ConversationHandler.END
 
@@ -194,39 +198,6 @@ def start(update, context):
             return REGISTER
 
 
-def my_order(update, context):
-    keyboard = [[InlineKeyboardButton("📋 Check My Orders (Testing)", callback_data=str(CHECK_ORDERS))],
-                [InlineKeyboardButton("« Back", callback_data=str(END))]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    update.callback_query.answer()
-    update.callback_query.edit_message_text(
-        text="Hi, what would you like to do?",
-        reply_markup=reply_markup
-    )
-    return MY_ORDERS
-
-def check_past_orders(update, context):
-    userids = str(update.effective_user.id)
-    keyboard = [[InlineKeyboardButton("« Back", callback_data=str(END))]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    # get all orders whose userid field == current user
-    # orders_collection_ref = db.collection(u'orders').where(u'userid', u'==', userids).stream()
-    # test on user ids in orders collection
-    orders_collection_ref = db.collection(u'orders').where(u'userid', u'==', '1298210408').stream()
-    ordersString = ''
-    i = 1
-    for order in orders_collection_ref:
-        # is there more efficient concatenation methods?
-        strings = ["\nOrder", str(i), ": \nAddress: ", f'{order.to_dict().get("address")}', "\nRecycling: ", f'{order.to_dict().get("item")}', "\nDate: ", f'{order.to_dict().get("timeslot")}']
-        ordersString = ordersString + ' '.join(strings)
-        i += 1
-    update.callback_query.answer()
-    update.callback_query.edit_message_text(
-        text="Here are your order details: " + ordersString,
-        reply_markup=reply_markup
-    )
-    return MY_ORDERS
-
 def recycle(update, context):
     keyboard = [[InlineKeyboardButton("🗞  Papers ", callback_data=str(ITEM_PAPERS))],
                 [InlineKeyboardButton("👕  Clothes ", callback_data=str(ITEM_CLOTHES))],
@@ -236,14 +207,16 @@ def recycle(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.answer()
     update.callback_query.edit_message_text(
-        text="Please select the type of hrecyclables\n you wish to recycle:"\
+        text="Please select the type of recyclables\n you wish to recycle:"\
         "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding.",
         reply_markup=reply_markup
     )
     return RECYCLABLES
-owiejf;asdkfjweifas;dlkfjwoeija;sldkfjwoeifj;lksdjfowiej;aliejfiejflskdjfoweijflsdkfja;woeijfa;sdlkffjeijf;slkdjfwoeijfa;sdkfjweoifjasdlkfjas;ldfkj
+
 
 def papers(update, context):
+    #paperprice = pricelist.get_price(userdatas['regionid'], "2", API_TOKEN)
+    paperprice = pricelist.get_price("1", "2", API_TOKEN)
     update.callback_query.answer(
         text="Do note that we do not accept cardboards/ cartons.",
         show_alert=True)
@@ -272,6 +245,8 @@ def papers(update, context):
 
 
 def clothes(update, context):
+    #clothesprice = pricelist.get_price(userdatas['regionid'], "1", API_TOKEN)
+    clothesprice = pricelist.get_price("1", "1", API_TOKEN)
     update.callback_query.answer(
         text="We only accept normal civilian clothings as they are meant to be reused. Items such as but not limited to school/ work uniforms, canvas bags etc are not acceptable",
         show_alert=True)
@@ -308,6 +283,7 @@ def get_link(name, address):
 def electronics(update, context):
     name = str(update.effective_user.first_name)
     address = (userdatas['address'], userdatas['unit'], userdatas['postal'])
+
     full_address = ", ".join(address)
     update.callback_query.answer(
         text="Electronic recycling will be done via google forms."\
@@ -327,10 +303,13 @@ def electronics(update, context):
     )
     return END_ELECTRONICS
 
-
 def _item_text(item):
     paperTypes = [PAPER1, PAPER2, PAPER3, PAPER4]
     clothesTypes = [CLOTHES1, CLOTHES2, CLOTHES3, CLOTHES4]
+    #paperprice = pricelist.get_price(userdatas['regionid'], "2", API_TOKEN)
+    paperprice = pricelist.get_price("1", "2", API_TOKEN)
+    #clothesprice = pricelist.get_price(userdatas['regionid'], "1", API_TOKEN)
+    clothesprice = pricelist.get_price("1", "1", API_TOKEN)
 
     if item in paperTypes:
         pos = paperTypes.index(item) + 1
@@ -404,6 +383,7 @@ def clear_item(update, context):
 
 def clear_confirm(update, context):
     choice = update.callback_query.data
+    text = ""
     if choice == CHOICE1:
         context.user_data.pop(PAPERS, None)
         text = "Papers cleared!"
@@ -552,12 +532,12 @@ def success(update, context):
     timeslot = user_data[DAYS]
     timestamp = str(int(time.time()))
     ordernum = timestamp + "U" + userids
-
+    '''
     if re.match(r"\b(\w*fri\w*)\b", timeslot, re.I):
         shard_counter.increment_friday(db)
     elif re.match(r"\b(\w*sat\w*)\b", timeslot, re.I):
         shard_counter.increment_saturday(db)
-
+    '''
     header_text = ("*Your order has been confirmed! 👍🏻\n\n*")
 
     order_text = ("*Order No. #O{}*"\
@@ -699,6 +679,99 @@ def helps_contact(update, context):
     )
     return HELPS
 
+def my_order(update, context):
+    keyboard = [[InlineKeyboardButton("📋 See past orders (Testing)", callback_data=str(CHECK_ORDERS))],
+                [InlineKeyboardButton("📋 Cancel orders (Testing)", callback_data=str(CANCEL_ORDERS))],
+                [InlineKeyboardButton("« Back", callback_data=str(END))]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.callback_query.answer()
+    update.callback_query.edit_message_text(
+        text="Hi, what would you like to do?",
+        reply_markup=reply_markup
+    )
+    return MY_ORDERS
+
+def check_past_orders(update, context):
+    userids = str(update.effective_user.id)
+    keyboard = [[InlineKeyboardButton("« Back", callback_data=str(END_PAST_ORDERS))]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    # get all orders whose userid field == current user
+    orders_collection_ref = db.collection(u'orders').where(u'userid', u'==', userids).stream()
+    # test on user ids in orders collection
+    ordersString = ''
+    i = 1
+    for order in orders_collection_ref:
+        # is there more efficient concatenation methods?
+        strings = ["\nOrder", str(i), "\nRecyclables: ", f'{order.to_dict().get("item")}', "\nDate: ", f'{order.to_dict().get("timeslot")}']
+        ordersString = ordersString + ' '.join(strings)
+        i += 1
+    update.callback_query.answer()
+    update.callback_query.edit_message_text(
+        text="Here are your past orders: " + ordersString,
+        reply_markup=reply_markup
+    )
+    return MY_ORDERS
+
+def orders_to_cancel(update, context):
+    userids = str(update.effective_user.id)
+    #getting current date
+    now = datetime.now()
+    year = now.strftime("%Y")
+    month = now.strftime("%m")
+    day = now.strftime("%d")
+    date, keyboard_button = [],[]
+    i,j=0,0
+    ordersString = ''
+    orders_collection_ref = db.collection(u'orders').where(u'userid', u'==', userids).stream()
+    for order in orders_collection_ref:
+        timeslot = order.to_dict().get("timeslot")
+        date.append([int(s) for s in re.findall(r'\b\d+\b', timeslot)])
+        if date[i][1] >= int(month) and date[i][0] >= int(day) and date[i][2] >= int(year):
+            orderno = "Order" + str(j+1)
+            strings = ["\n", orderno, "\nRecyclables: ", f'{order.to_dict().get("item")}', "\nDate: ", f'{order.to_dict().get("timeslot")}']
+            ordernum = order.to_dict().get("ordernum")
+            ordersString = ordersString + ' '.join(strings)
+            keyboard_button.append(InlineKeyboardButton(orderno, callback_data = ordernum))
+            j += 1
+        i+=1
+    keyboard_button.append(InlineKeyboardButton("« Back", callback_data=str(END_CANCELVIEW)))
+    reply_markup = InlineKeyboardMarkup(build_menu(keyboard_button, n_cols=1))
+    update.callback_query.answer()
+    update.callback_query.edit_message_text(
+        text="Which order would you like to cancel?"
+            + ordersString,
+        reply_markup=reply_markup
+    )
+    return CANCEL_VIEW
+
+def confirm_cancel(update, context):
+    res = update.callback_query.data # Retrieves order to cancel from callback data
+    cancelledorders[0] = res # Store res in a dict to remember the order to cancel
+    # Here you can see the callback data from the button being printed. Do note that callback data in buttons have a char limit.
+    keyboard = [[InlineKeyboardButton("Confirm", callback_data=str(CANCELYES)),
+                 InlineKeyboardButton("« Back", callback_data=str(END_CANCEL))]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.callback_query.answer()
+    update.callback_query.edit_message_text(
+        text="Confirm to cancel?",
+        reply_markup=reply_markup
+    )
+    return CANCEL_CONFIRMATION
+
+def proceed_cancel(update,context):
+    """ Access dict that contains order to cancel
+        Cancel order in this function
+        Remember to clear the dict!
+    """
+    db.collection(u'orders').document(cancelledorders[0]).delete()
+    cancelledorders[0] = '0'
+    update.callback_query.answer()
+    update.callback_query.edit_message_text(
+        text="Your order has been cancelled."\
+                "\nFor any enquiries, please message @RecyclablesHelpBot on Telegram."\
+                "\n\nThe bot will now exit. Type /start to start the bot."
+    )
+    return STOPPING # Bot exits after cancellation
 
 def change_address(update, context):
     keyboard = [[InlineKeyboardButton("Proceed", callback_data=str(PROCEED)),
@@ -713,7 +786,6 @@ def change_address(update, context):
     )
     return HELPS
 
-
 def proceed(update, context):
     userids = str(update.effective_user.id)
     db.collection(u'users').document(userids).delete()
@@ -725,7 +797,6 @@ def proceed(update, context):
         text="Reset completed, your details are removed. \n\nType /start to enter your new details!"
     )
     return STOPPING
-
 
 def register(update, context):
     update.callback_query.answer()
@@ -812,7 +883,6 @@ def postal(update, context):
                                   disable_web_page_preview=True)
     return POSTAL
 
-
 def address(update, context):
     res = update.callback_query.data
     data = res.split(",")
@@ -828,7 +898,6 @@ def address(update, context):
         parse_mode='Markdown'
     )
     return UNIT
-
 
 def unit(update, context):
     unit = update.message.text
@@ -859,7 +928,6 @@ def unit(update, context):
         update.message.reply_text('error, try again later')
         return STOPPING
 
-
 def end(update, context):
     user_data = context.user_data
     user_data.clear()
@@ -868,7 +936,6 @@ def end(update, context):
     )
     return END
 
-
 def cancel(update, context):
     user_data = context.user_data
     user_data.clear()
@@ -876,7 +943,6 @@ def cancel(update, context):
         text="Alright! Thank you and have a nice day!"
     )
     return END
-
 
 def cancel_slots(update, context):
     update.message.reply_text(
@@ -908,27 +974,26 @@ def end_nested(update, context):
     )
     return STOPPING
 
-
 def end_second(update, context):
     context.user_data[START_OVER] = True
     start(update, context)
     return END
 
-
 def end_third(update, context):
     recycle(update, context)
     return END
 
+def end_cancel_third(update, context):
+    my_order(update,context)
+    return END
 
 def end_fourth(update, context):
     item_basket(update, context)
     return END
 
-
 def end_fifth(update, context):
     agreement(update, context)
     return END
-
 
 def error(update, context):
     """Log Errors caused by Updates."""
@@ -1016,8 +1081,7 @@ def main():
             CLEAR: [
                 CallbackQueryHandler(clear_confirm, pattern='^{0}$|^{1}$'.format(str(CHOICE1),
                                                                                  str(CHOICE2))),
-                CallbackQueryHandler(
-                    item_basket, pattern='^' + str(END_CLEAR) + '$')
+                CallbackQueryHandler(item_basket, pattern='^' + str(END_CLEAR) + '$')
             ],
         },
 
@@ -1054,8 +1118,7 @@ def main():
             CLEAR: [
                 CallbackQueryHandler(clear_confirm, pattern='^{0}$|^{1}$'.format(str(CHOICE1),
                                                                                  str(CHOICE2))),
-                CallbackQueryHandler(
-                    item_basket, pattern='^' + str(END_CLEAR) + '$')
+                CallbackQueryHandler(item_basket, pattern='^' + str(END_CLEAR) + '$')
             ],
         },
 
@@ -1091,18 +1154,42 @@ def main():
             END: RECYCLABLES,
         }
     )
-    # Second level (Item selection)
+
+    cancel_level = ConversationHandler(
+        entry_points=[CallbackQueryHandler(
+            orders_to_cancel, pattern='^' + str(CANCEL_ORDERS) + '$')],
+
+        states={
+            CANCEL_VIEW: [
+                CallbackQueryHandler(end_cancel_third, pattern='^' + str(END_CANCELVIEW) + '$'),
+                CallbackQueryHandler(confirm_cancel),
+            ],
+            CANCEL_CONFIRMATION: [
+                CallbackQueryHandler(proceed_cancel, pattern='^' + str(CANCELYES) + '$'),
+                CallbackQueryHandler(orders_to_cancel, pattern='^' + str(END_CANCEL) + '$'),
+            ]
+        },
+        fallbacks=[
+            CallbackQueryHandler(end_second, pattern='^' + str(END) + '$'),
+            CommandHandler('cancel', end_nested)
+        ],
+
+        map_to_parent={
+            STOPPING: STOPPING,
+            END: MY_ORDER
+        }
+    )
+    # Second level (Total orders selection)
     orders_level = ConversationHandler(
         entry_points=[CallbackQueryHandler(
             my_order, pattern='^' + str(MY_ORDER) + '$')],
 
         states={
             MY_ORDERS: [
-                CallbackQueryHandler(check_past_orders, pattern='^' +
-                                     str(CHECK_ORDERS) + '$'),
-                CallbackQueryHandler(my_order, pattern='^' +
-                                     str(END_MY_ORDERS) + '$'),
-            ]
+                cancel_level,
+                CallbackQueryHandler(check_past_orders, pattern='^' + str(CHECK_ORDERS) + '$'),
+                CallbackQueryHandler(my_order, pattern='^' + str(END_PAST_ORDERS) + '$'),
+            ],
         },
         fallbacks=[
             CallbackQueryHandler(end_second, pattern='^' + str(END) + '$'),
@@ -1114,7 +1201,7 @@ def main():
             END: MAIN_MENU
         }
     )
-    # Second level (Item selection)
+    # Second level (Helps selection)
     helps_level = ConversationHandler(
         entry_points=[CallbackQueryHandler(
             helps, pattern='^' + str(HELP) + '$')],
@@ -1122,12 +1209,9 @@ def main():
         states={
             HELPS: [
                 CallbackQueryHandler(helps_faq, pattern='^' + str(FAQ) + '$'),
-                CallbackQueryHandler(
-                    helps_contact, pattern='^' + str(CONTACT) + '$'),
-                CallbackQueryHandler(
-                    change_address, pattern='^' + str(CHANGE_ADDRESS) + '$'),
-                CallbackQueryHandler(helps, pattern='^' +
-                                     str(END_HELPS) + '$'),
+                CallbackQueryHandler(helps_contact, pattern='^' + str(CONTACT) + '$'),
+                CallbackQueryHandler(change_address, pattern='^' + str(CHANGE_ADDRESS) + '$'),
+                CallbackQueryHandler(helps, pattern='^' + str(END_HELPS) + '$'),
                 CallbackQueryHandler(proceed, pattern='^' + str(PROCEED) + '$')
             ]
         },
@@ -1141,7 +1225,7 @@ def main():
             END: MAIN_MENU
         }
     )
-    # Second level (Item selection)
+    # Second level (Info selection)
     info_level = ConversationHandler(
         entry_points=[CallbackQueryHandler(
             info, pattern='^' + str(INFO) + '$')],
@@ -1238,8 +1322,8 @@ def main():
     updater.bot.setWebhook("https://{}.herokuapp.com/{}".format(NAME, TOKEN))
 
     # For local hosting ONLY
-    # updater.start_polling()
-    # updater.idle()
+    #updater.start_polling()
+    #updater.idle()
 
 if __name__ == '__main__':
     main()
