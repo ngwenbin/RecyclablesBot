@@ -1,4 +1,4 @@
-paperprice = 0.06
+paperprice = 0.08
 clothesprice = 0.20
 
 def price_point(item, low, high):
