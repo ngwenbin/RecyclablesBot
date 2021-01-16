@@ -736,6 +736,8 @@ def postal(update, context):
                     building = add_data['results'][x]['BUILDING']
                     if '@' in building:
                         building = building.split('@')[0]
+                    elif len(building) > 20:
+                        building = building[:20]
                     full_add = block + ' ' + street + ', ' + building
                     lat = round(float(add_data['results'][x]['LATITUDE']), 3)
                     lng = round(float(add_data['results'][x]['LONGITUDE']), 3)
