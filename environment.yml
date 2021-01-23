@@ -1,105 +1,142 @@
 name: recyclables
 channels:
+  - conda-forge
   - defaults
 dependencies:
+  - aiohttp=3.7.3
+  - apscheduler=3.6.3
+  - async-timeout=3.0.1
   - attrs=20.3.0
-  - blas=1.0
+  - blinker=1.4
+  - boost-cpp=1.74.0
+  - brotlipy=0.7.0
   - bzip2=1.0.8
-  - ca-certificates=2020.12.8
+  - ca-certificates=2020.12.5
+  - cairo=1.16.0
+  - certifi=2020.12.5
+  - cffi=1.14.4
   - cfitsio=3.470
   - click=7.1.2
   - click-plugins=1.1.1
   - cligj=0.7.1
-  - curl=7.67.0
-  - expat=2.2.10
-  - fiona=1.8.13.post1
-  - freexl=1.0.6
-  - gdal=3.0.2
+  - cryptography=3.3.1
+  - curl=7.71.1
+  - cycler=0.10.0
+  - decorator=4.4.2
+  - expat=2.2.9
+  - fiona=1.8.18
+  - fontconfig=2.13.1
+  - freetype=2.10.4
+  - freexl=1.0.5
+  - gdal=3.1.4
   - geopandas=0.8.1
-  - geos=3.8.0
-  - geotiff=1.5.1
+  - geos=3.8.1
+  - geotiff=1.6.0
+  - gettext=0.19.8.1
+  - google-auth=1.24.0
+  - google-auth-oauthlib=0.4.2
+  - gspread=3.6.0
   - hdf4=4.2.13
-  - hdf5=1.10.4
-  - icu=58.2
-  - intel-openmp=2020.2
-  - jpeg=9b
-  - kealib=1.4.7
-  - krb5=1.16.4
-  - libboost=1.67.0
-  - libcurl=7.67.0
-  - libgdal=3.0.2
-  - libiconv=1.15
+  - hdf5=1.10.6
+  - icu=68.1
+  - idna=2.10
+  - intel-openmp=2020.3
+  - jpeg=9d
+  - kealib=1.4.14
+  - kiwisolver=1.3.1
+  - krb5=1.17.2
+  - libblas=3.9.0
+  - libcblas=3.9.0
+  - libclang=11.0.1
+  - libcurl=7.71.1
+  - libffi=3.3
+  - libgdal=3.1.4
+  - libglib=2.66.4
+  - libiconv=1.16
   - libkml=1.3.0
-  - libnetcdf=4.6.1
+  - liblapack=3.9.0
+  - libnetcdf=4.7.4
   - libpng=1.6.37
-  - libpq=11.2
+  - libpq=12.3
   - libspatialindex=1.9.3
-  - libspatialite=4.3.0a
+  - libspatialite=5.0.0
   - libssh2=1.9.0
-  - libtiff=4.1.0
+  - libtiff=4.2.0
+  - libwebp-base=1.1.0
   - libxml2=2.9.10
-  - lz4-c=1.8.1.2
-  - mkl=2020.2
-  - mkl-service=2.3.0
-  - mkl_fft=1.2.0
-  - mkl_random=1.1.1
+  - lz4-c=1.9.3
+  - matplotlib=3.3.3
+  - matplotlib-base=3.3.3
+  - mkl=2020.4
+  - multidict=5.1.0
   - munch=2.5.0
-  - numpy=1.19.2
-  - numpy-base=1.19.2
-  - openjpeg=2.3.0
+  - numpy=1.19.5
+  - oauthlib=3.0.1
+  - olefile=0.46
+  - openjpeg=2.4.0
   - openssl=1.1.1i
-  - pandas=1.2.0
+  - pandas=1.2.1
   - pcre=8.44
+  - pillow=8.1.0
   - pip=20.3.3
-  - postgresql=11.2
-  - proj=6.2.1
+  - pixman=0.40.0
+  - poppler=0.89.0
+  - poppler-data=0.4.10
+  - postgresql=12.3
+  - proj=7.1.1
+  - pyasn1=0.4.8
+  - pycparser=2.20
+  - pyjwt=2.0.1
+  - pyopenssl=20.0.1
+  - pyparsing=2.4.7
   - pyproj=2.6.1.post1
-  - python=3.8.5
+  - pyqt=5.12.3
+  - pyqt-impl=5.12.3
+  - pyqt5-sip=4.19.18
+  - pyqtchart=5.12
+  - pyqtwebengine=5.12.1
+  - pysocks=1.7.1
+  - python=3.9.1
   - python-dateutil=2.8.1
-  - rtree=0.9.4
-  - setuptools=51.1.2
+  - python-dotenv=0.15.0
+  - python-telegram-bot=13.1
+  - python_abi=3.9
+  - pytz=2020.5
+  - qt=5.12.9
+  - requests=2.25.1
+  - requests-oauthlib=1.3.0
+  - rsa=4.7
+  - rtree=0.9.7
+  - setuptools=49.6.0
   - shapely=1.7.1
   - six=1.15.0
-  - sqlite=3.33.0
-  - tbb=2018.0.5
-  - tiledb=1.6.3
+  - sqlite=3.34.0
+  - tiledb=2.1.6
   - tk=8.6.10
+  - tornado=6.1
+  - typing-extensions=3.7.4.3
+  - typing_extensions=3.7.4.3
+  - tzdata=2020f
+  - tzlocal=2.1
+  - ujson=4.0.2
+  - urllib3=1.26.2
+  - vc=14.2
+  - vs2015_runtime=14.28.29325
   - wheel=0.36.2
+  - win_inet_pton=1.1.0
+  - wincertstore=0.2
   - xerces-c=3.2.3
   - xz=5.2.5
+  - yarl=1.6.3
   - zlib=1.2.11
-  - zstd=1.3.7
+  - zstd=1.4.8
   - pip:
-    - astroid==2.4.2
-    - cachetools==4.1.1
-    - certifi==2020.6.20
-    - chardet==3.0.4
-    - colorama==0.4.3
-    - cycler==0.10.0
-    - decorator==4.4.2
-    - descartes==1.1.0
-    - google-api-python-client==1.11.0
-    - google-auth-httplib2==0.0.4
-    - google-cloud-core==1.4.1
+    - cachetools==4.2.0
+    - chardet==4.0.0
+    - google-api-core==1.25.0
+    - google-cloud-core==1.5.0
     - google-cloud-firestore==1.9.0
     - googleapis-common-protos==1.52.0
-    - grpcio==1.31.0
-    - httplib2==0.18.1
-    - idna==2.10
-    - kiwisolver==1.3.1
-    - lazy-object-proxy==1.4.3
-    - matplotlib==3.3.3
-    - mccabe==0.6.1
-    - pillow==8.1.0
-    - protobuf==3.13.0
-    - pyasn1==0.4.8
+    - grpcio==1.35.0
+    - protobuf==3.14.0
     - pyasn1-modules==0.2.8
-    - pycparser==2.20
-    - pyparsing==2.4.7
-    - pytz==2020.1
-    - requests==2.24.0
-    - rsa==4.6
-    - toml==0.10.1
-    - tornado==6.0.4
-    - uritemplate==3.0.1
-prefix: D:\Programs\anaconda3\envs\recyclables
