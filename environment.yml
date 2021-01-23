@@ -116,4 +116,3 @@ dependencies:
     - toml==0.10.1
     - tornado==6.0.4
     - uritemplate==3.0.1
-prefix: D:\Programs\anaconda3\envs\recyclables
