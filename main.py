@@ -9,22 +9,24 @@ from google.cloud import firestore
 from shards import Shard, Counter
 from order import Orders
 from user import Users
-import pricelist 
+import pricelist
 from datetime import datetime
+from geofence.geofence import allocation
+from kgid import kgids
 
 # load env file
 load_dotenv()
 
 gc = gspread.service_account(filename='credentials.json')
-sheet2 = gc.open("Recyclables (Database)").worksheet("Orders")
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credentials.json"
 
 # Global stuff
 db = firestore.Client() # initiates firestore db client
 shard_counter = Counter(10) # Initiates shard counts
 TOKEN = os.getenv("TELEGRAM_TOKEN")
-GRPCHATID = os.getenv("GROUPCHAT_ID")
 API_TOKEN = os.getenv("API_TOKEN")
+GRPID = os.getenv("GROUPCHAT_ID")
+NAME = os.getenv("HEROKU_NAMES")
 userdatas = {} # global user dict
 cancelledorders = {}
 class MQBot(telegram.bot.Bot): # Class handler for message queue
@@ -126,18 +128,15 @@ def start(update, context):
     main_text = "*Recyclables* can help you to schedule "\
                 "recycling collections with a karang guni conveniently!"\
                 "\n\nThrough *Recyclables*, you can help the environment "\
-                "while increasing the productivity "\
+                "and boost the productivity "\
                 "of our local karung gunis."\
-                "\nIn addition to that, you can receive "\
+                "\nIn addition to that, you get to receive "\
                 "incentives for your recyclables! ☺️"\
                 "\n\nHow can I help you?"
 
     register_text = "*Oops! Looks like you are not registered with us.*"\
                     "\n\nIn order to use Recyclables,"\
                     "\nI will need your residential address for registration purposes."\
-                    "\n\nWe are currently running a trial run and are only operating in:"\
-                    "\n📍 Choa Chu Kang"\
-                    "\n📍 Yew Tee"\
                     "\n\n*Would you like to proceed?*"\
                     "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding."
 
@@ -146,7 +145,7 @@ def start(update, context):
     main_keyboard = [[InlineKeyboardButton("♻️  Start recycling!", callback_data=str(RECYCLE))],
                      [InlineKeyboardButton( "📋  Info", callback_data=str(INFO))],
                      [InlineKeyboardButton("🙋🏻‍♀️  Help", callback_data=str(HELP))],
-                     [InlineKeyboardButton("📋 My Orders (Testing)", callback_data=str(MY_ORDER))],
+                     [InlineKeyboardButton("📋 My Orders", callback_data=str(MY_ORDER))],
                      [InlineKeyboardButton("« Exit", callback_data=str(END))]]
 
     main_markup = InlineKeyboardMarkup(main_keyboard)
@@ -182,8 +181,12 @@ def start(update, context):
         if doc.exists: # If user document exists
             userdatas.clear() # Clears global dict
             userdatas.update(doc.to_dict()) # Updates global dict with user data dict from firestore
+
+            latitude = float(userdatas['latitude'])
+            longitude = float(userdatas['longitude'])
+            userdatas['regionid'] = allocation(latitude,longitude)
             update.message.reply_text(
-                text=main_text,
+                text=main_text + userdatas['regionid'],
                 parse_mode="Markdown",
                 reply_markup=main_markup
             )
@@ -215,8 +218,10 @@ def recycle(update, context):
 
 
 def papers(update, context):
-    #paperprice = pricelist.get_price(userdatas['regionid'], "2", API_TOKEN)
-    paperprice = pricelist.get_price("1", "2", API_TOKEN)
+    context.bot.send_chat_action(
+        chat_id=update.effective_message.chat_id, action=ChatAction.TYPING)
+    paperprice = pricelist.get_price(userdatas['regionid'], "2", API_TOKEN)
+    context.user_data['paperprice'] = paperprice
     update.callback_query.answer(
         text="Do note that we do not accept cardboards/ cartons.",
         show_alert=True)
@@ -234,8 +239,8 @@ def papers(update, context):
                 "_${} per KG_\n"\
                 "\nNeed help in estimating the weight?"\
                 "\nClick [here](https://i.imgur.com/6zd9K5P.png)!"\
-                "\n\n*IMPORTANT: Please remove any plastic covers/binders etc and our Karung guni uncles would really "\
-                "appreciate if you can separate any* [waxy-shiny paperback covers on textbooks/ books](https://i.imgur.com/euQGxUb.png) *if POSSIBLE.*"\
+                "\n\n*IMPORTANT: Kindly remove any plastic covering/ files/ binders etc on textbooks/ books/ documents.*"\
+                "\n\n[See here for the list of eligible items](https://www.recyclables.sg/static/media/guidelines.b6422f8a.pdf)"
                 "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding.".format(paperprice)),
         parse_mode='Markdown',
         reply_markup=reply_markup,
@@ -245,8 +250,10 @@ def papers(update, context):
 
 
 def clothes(update, context):
-    #clothesprice = pricelist.get_price(userdatas['regionid'], "1", API_TOKEN)
-    clothesprice = pricelist.get_price("1", "1", API_TOKEN)
+    context.bot.send_chat_action(
+        chat_id=update.effective_message.chat_id, action=ChatAction.TYPING)
+    clothesprice = pricelist.get_price(userdatas['regionid'], "1", API_TOKEN)
+    context.user_data['clothesprice'] = clothesprice
     update.callback_query.answer(
         text="We only accept normal civilian clothings as they are meant to be reused. Items such as but not limited to school/ work uniforms, canvas bags etc are not acceptable",
         show_alert=True)
@@ -260,10 +267,11 @@ def clothes(update, context):
 
     update.callback_query.edit_message_text(
         text=("*Please select an estimated weight of your clothes:*"\
-                "\n\nCurrent estimated prices:"\
+                "\n\nCurrent prices:"\
                 "\n_${} per KG_"\
-                "\n\n*IMPORTANT: We only accept normal civilian clothings as they are meant to be reused. "\
+                "\n\n*IMPORTANT: We only accept normal CLEAN civilian clothings as they are meant to be reused. "\
                 "Items such as but not limited to school/ work uniforms, canvas bags etc are not acceptable*"\
+                "\n\n[See here for the list of eligible items](https://www.recyclables.sg/static/media/guidelines.b6422f8a.pdf)"
                 "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding.".format(clothesprice)),
         parse_mode='Markdown',
         reply_markup=reply_markup,
@@ -303,21 +311,18 @@ def electronics(update, context):
     )
     return END_ELECTRONICS
 
-def _item_text(item):
+def _item_text(item, context):
     paperTypes = [PAPER1, PAPER2, PAPER3, PAPER4]
     clothesTypes = [CLOTHES1, CLOTHES2, CLOTHES3, CLOTHES4]
-    #paperprice = pricelist.get_price(userdatas['regionid'], "2", API_TOKEN)
-    paperprice = pricelist.get_price("1", "2", API_TOKEN)
-    #clothesprice = pricelist.get_price(userdatas['regionid'], "1", API_TOKEN)
-    clothesprice = pricelist.get_price("1", "1", API_TOKEN)
-
     if item in paperTypes:
+        paperprice = context.user_data['paperprice']
         pos = paperTypes.index(item) + 1
         text_item = ('Papers ({0}KG to {1}KG)'
                  '\n${2} per KG'.format((pos)*10,
                                          (pos+1)*10,
                                             paperprice))
     else:
+        clothesprice = context.user_data['clothesprice']
         pos = clothesTypes.index(item) + 1
         text_item = ('Clothes ({0}KG to {1}KG)'
                  '\n${2} per KG'.format((pos)*10,
@@ -338,7 +343,7 @@ def item_basket(update, context):
     else:
         item = update.callback_query.data
         context.user_data[ITEM_TYPE] = item
-        itemtype = _item_text(item)
+        itemtype = _item_text(item, context)
 
         if re.match("Papers", itemtype):
             context.user_data[PAPERS] = itemtype
@@ -400,15 +405,18 @@ def clear_confirm(update, context):
 
 def date_selection(update, context):
     user_data = context.user_data
+    regionid = userdatas['regionid']
     context.bot.send_chat_action(
         chat_id=update.effective_message.chat_id, action=ChatAction.TYPING)
     context.user_data[START_OVER] = True
-    URL = "https://us-central1-recyclables-telegram-bot.cloudfunctions.net/app/api/getDates/5/6"
+    URL = "https://us-central1-recyclables-telegram-bot.cloudfunctions.net/app/api/dateSelection/" + regionid
     headers = {"Authorization": "Bearer " + API_TOKEN}
     try:
-        gc.login()
-        sheet3 = gc.open("Recyclables (Database)").worksheet("Postals")
-        sheet3.find(userdatas['postal'])
+        # gc.login()
+        # sheet3 = gc.open("Recyclables (Database)").worksheet("Postals")
+        # sheet3.find(userdatas['postal'])
+        if regionid == "0":
+            raise Exception("Invalid region")
 
         if context.user_data.get(BASKET):
             r = requests.get(url=URL, headers=headers)
@@ -417,7 +425,9 @@ def date_selection(update, context):
                 keyboard_button = []
 
                 for i in date_data['dates']:
-                    keyboard_button.append(InlineKeyboardButton(i, callback_data=i))
+                    date = i['date']
+                    time = i['timestart']+','+i['timeend']
+                    keyboard_button.append(InlineKeyboardButton(date, callback_data=date+','+time))
 
                 reply_markup = InlineKeyboardMarkup(build_menu(keyboard_button, n_cols=1))
                 text = "*Please select your preferred date:*"\
@@ -448,11 +458,14 @@ def date_selection(update, context):
             )
             return END
 
-    except gspread.exceptions.CellNotFound:  # gspread exceptions
+    except Exception:
         text = "Sorry! You are unable to proceed as your region is currently not available!"\
-                "\n\nWe are currently running a trial run and are only operating in:"\
+                "\n\nWe are only operating in selected areas within:"\
                 "\n📍 Choa Chu Kang"\
                 "\n📍 Yew Tee"\
+                "\n📍 Bukit Batok"\
+                "\n📍 Bukit Panjang"\
+                "\n📍 Holland Village"\
                 "\n\nFollow us on [Instagram](https://www.instagram.com/recyclables.sg/) or [Facebook](https://www.facebook.com/recyclables.sg/) for updates!"\
                 "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding."
         keyboard = [[InlineKeyboardButton("« Back to item basket", callback_data=str(END))]]
@@ -470,7 +483,9 @@ def date_selection(update, context):
 def agreement(update, context):
     user_data = context.user_data
     if user_data.get(START_OVER):
-        user_data[DAYS] = update.callback_query.data
+        date_data = (update.callback_query.data).split(",")
+        user_data[DAYS] = date_data[0]
+        user_data[TIMES] = date_data[1] + " to " + date_data[2]
     else:
         context.user_data[START_OVER] = True
 
@@ -482,10 +497,12 @@ def agreement(update, context):
     update.callback_query.edit_message_text(
         text="*Please do ensure your recyclables are reasonably accurate to the weight indicated*."\
                 "\n\nBy proceeding you agree that your items are within our requirements and our Karung Guni uncles have the right to refuse them if they are not."\
-                "\n\nCollection timing will be between 11am to 2pm."\
-                "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding.",
+                    "\n\n[See here for the list of eligible items and requirements](https://www.recyclables.sg/static/media/guidelines.b6422f8a.pdf)"
+                "\n\nCollection timing: *{}*."\
+                "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding.".format(user_data[TIMES]),
         parse_mode='Markdown',
-        reply_markup=reply_markup
+        reply_markup=reply_markup,
+        disable_web_page_preview=True
     )
     return AGREEMENT
 
@@ -493,8 +510,7 @@ def agreement(update, context):
 def basket_confirm(update, context):
     user_data = context.user_data
     user_data[START_OVER] = False
-    #times = update.callback_query.data
-    #user_data[TIMES] = times
+    times = user_data[TIMES]
     days = user_data[DAYS]
     address = (userdatas['address'], userdatas['unit'], userdatas['postal'])
     full_address = "\n".join(address)
@@ -503,9 +519,10 @@ def basket_confirm(update, context):
             "Item basket:\n_{0}_"\
             "\n\nCollection address:\n{1}"\
             "\n\nCollection details:\n{2}"\
-            "\n11am to 2pm".format(item_format(user_data),
+            "\n{3}".format(item_format(user_data),
                                    full_address,
-                                   days))
+                                   days,
+                                   times))
     end_text = "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding."
     keyboard = [[InlineKeyboardButton("🛒  Checkout", callback_data=str(CHECKOUT)),
                  InlineKeyboardButton("« Back", callback_data=str(END))]
@@ -523,21 +540,17 @@ def basket_confirm(update, context):
 
 def success(update, context):
     user_data = context.user_data
-    gc.login()
     context.bot.send_chat_action(chat_id=update.effective_message.chat_id, action=ChatAction.TYPING)
     userids = str(update.effective_user.id)
     username = str(update.effective_user.username)
     item = item_format(user_data)
     full_address = userdatas['fulladdress']
-    timeslot = user_data[DAYS]
+    times = user_data[TIMES]
+    days = user_data[DAYS]
     timestamp = str(int(time.time()))
     ordernum = timestamp + "U" + userids
-    '''
-    if re.match(r"\b(\w*fri\w*)\b", timeslot, re.I):
-        shard_counter.increment_friday(db)
-    elif re.match(r"\b(\w*sat\w*)\b", timeslot, re.I):
-        shard_counter.increment_saturday(db)
-    '''
+    regionid = userdatas['regionid']
+
     header_text = ("*Your order has been confirmed! 👍🏻\n\n*")
 
     order_text = ("*Order No. #O{}*"\
@@ -548,7 +561,7 @@ def success(update, context):
     collection_add = ("\n\n*Collection address:*\n{}".format(full_address))
 
     collection_detail = ("\n\n*Collection details:*\n{0}"\
-                         "\n11am to 2pm".format(timeslot))
+                         "\n{1}".format(days, times))
 
     end_text = "\n\n_Message @RecyclablesHelpBot on Telegram for any order related enquiries!_"
 
@@ -559,15 +572,21 @@ def success(update, context):
         parse_mode="Markdown"
     )
 
+    # This is for updating order counts
+    orderDate = '{}-{}-{}'.format(days[-5:-1], days[-8:-6], days[-11:-9])
+    URL = "https://us-central1-recyclables-telegram-bot.cloudfunctions.net/app/api/updateCount/" + regionid + '/' + orderDate
+    headers = {"Authorization": "Bearer " + API_TOKEN}
+    requests.put(url=URL, headers=headers)
+
     # this is for order message notification
     bot = context.bot
-    bot.send_message(chat_id=GRPCHATID,
+    bot.send_message(chat_id=kgids(GRPID, regionid),
                      parse_mode="Markdown",
                      text=order_text+item_text+collection_add+collection_detail)
 
-    db.collection(u'orders').document(ordernum).set(Orders(userids, username, ordernum, item, timeslot, timestamp, full_address).orders_to_dict())
-    shard_counter.increment_order(db)
-    sheet2.append_row([ordernum, userids, item, timeslot, full_address], value_input_option="RAW")
+    db.collection(u'orders').document(ordernum).set(Orders(userids, username, ordernum, item, days, timestamp, full_address, regionid).orders_to_dict())
+    # sheet2 = gc.open("Recyclables (Database)").worksheet("Orders")
+    # sheet2.append_row([ordernum, userids, item, days, full_address], value_input_option="RAW")
     user_data.clear()
     userdatas.clear()
     return STOPPING
@@ -603,7 +622,7 @@ def info_privacy(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.answer()
     update.callback_query.edit_message_text(
-        text="We treat your data very seriously. Do visit our [Facebook](https://www.facebook.com/recyclables.sg/) page for more information."\
+        text="We treat your data very seriously. Do visit our website www.recyclables.sg/privacy for more information."\
                 "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding.",
         reply_markup=reply_markup,
         parse_mode='Markdown',
@@ -653,8 +672,8 @@ def helps_faq(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.answer()
     update.callback_query.edit_message_text(
-        text="Our FAQ can be found on our [Facebook page](https://www.facebook.com/recyclables.sg/).\n\n"\
-                " Alternatively, you can message @RecyclablesHelpBot on Telegram for any enquiries!"\
+        text="Our FAQ can be found on our website www.recyclables.sg/help.\n\n"\
+                " Alternatively, you can message @RecyclablesHelpBot on Telegram for help!"\
                 "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding.",
         reply_markup=reply_markup,
         parse_mode='Markdown',
@@ -670,6 +689,7 @@ def helps_contact(update, context):
     update.callback_query.edit_message_text(
         text="Feel free to reach us at the following channels!"\
                 "\n\n*Email*: help@recyclables.sg"\
+                "\n\n*Website*: www.recyclables.sg"\
                 "\n*Instagram* : [@recyclables.sg](https://www.instagram.com/recyclables.sg/)"\
                 "\n*Facebook*: [recyclables.sg](https://www.facebook.com/recyclables.sg/)"\
                 "\n*Telegram: *@RecyclablesHelpBot",
@@ -680,8 +700,8 @@ def helps_contact(update, context):
     return HELPS
 
 def my_order(update, context):
-    keyboard = [[InlineKeyboardButton("📋 See past orders (Testing)", callback_data=str(CHECK_ORDERS))],
-                [InlineKeyboardButton("📋 Cancel orders (Testing)", callback_data=str(CANCEL_ORDERS))],
+    keyboard = [[InlineKeyboardButton("📋 See current orders", callback_data=str(CHECK_ORDERS))],
+                [InlineKeyboardButton("📋 Cancel orders", callback_data=str(CANCEL_ORDERS))],
                 [InlineKeyboardButton("« Back", callback_data=str(END))]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.answer()
@@ -702,13 +722,15 @@ def check_past_orders(update, context):
     i = 1
     for order in orders_collection_ref:
         # is there more efficient concatenation methods?
-        strings = ["\nOrder", str(i), "\nRecyclables: ", f'{order.to_dict().get("item")}', "\nDate: ", f'{order.to_dict().get("timeslot")}']
-        ordersString = ordersString + ' '.join(strings)
+        orderno = "Order " + str(i)
+        strings = [orderno + "\n============", "*Recyclables:*\n" + f'{order.to_dict().get("item")}', "*Date:*\n", f'{order.to_dict().get("timeslot")}']
+        ordersString = ordersString + '\n'.join(strings)
         i += 1
     update.callback_query.answer()
     update.callback_query.edit_message_text(
-        text="Here are your past orders: " + ordersString,
-        reply_markup=reply_markup
+        text="Here are your past orders:\n\n" + ordersString,
+        reply_markup=reply_markup,
+        parse_mode='Markdown',
     )
     return MY_ORDERS
 
@@ -727,10 +749,10 @@ def orders_to_cancel(update, context):
         timeslot = order.to_dict().get("timeslot")
         date.append([int(s) for s in re.findall(r'\b\d+\b', timeslot)])
         if date[i][1] >= int(month) and date[i][0] >= int(day) and date[i][2] >= int(year):
-            orderno = "Order" + str(j+1)
-            strings = ["\n", orderno, "\nRecyclables: ", f'{order.to_dict().get("item")}', "\nDate: ", f'{order.to_dict().get("timeslot")}']
             ordernum = order.to_dict().get("ordernum")
-            ordersString = ordersString + ' '.join(strings)
+            orderno = "Order " + str(j+1)
+            strings = [orderno + "\n============", "*Recyclables:*\n" + f'{order.to_dict().get("item")}', "\n*Date:*\n" + f'{order.to_dict().get("timeslot")}']
+            ordersString = ordersString + '\n'.join(strings)
             keyboard_button.append(InlineKeyboardButton(orderno, callback_data = ordernum))
             j += 1
         i+=1
@@ -738,9 +760,10 @@ def orders_to_cancel(update, context):
     reply_markup = InlineKeyboardMarkup(build_menu(keyboard_button, n_cols=1))
     update.callback_query.answer()
     update.callback_query.edit_message_text(
-        text="Which order would you like to cancel?"
-            + ordersString,
-        reply_markup=reply_markup
+        text="Which order would you like to cancel?\n\n"
+            + ordersString+"\n\nType /cancel to cancel",
+        reply_markup=reply_markup,
+        parse_mode='Markdown',
     )
     return CANCEL_VIEW
 
@@ -753,24 +776,25 @@ def confirm_cancel(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.answer()
     update.callback_query.edit_message_text(
-        text="Confirm to cancel?",
+        text="🚨 Confirm to cancel?",
         reply_markup=reply_markup
     )
     return CANCEL_CONFIRMATION
 
 def proceed_cancel(update,context):
-    """ Access dict that contains order to cancel
-        Cancel order in this function
-        Remember to clear the dict!
-    """
+    regionid = userdatas['regionid']
     db.collection(u'orders').document(cancelledorders[0]).delete()
-    cancelledorders[0] = '0'
     update.callback_query.answer()
     update.callback_query.edit_message_text(
         text="Your order has been cancelled."\
                 "\nFor any enquiries, please message @RecyclablesHelpBot on Telegram."\
                 "\n\nThe bot will now exit. Type /start to start the bot."
     )
+    bot = context.bot
+    bot.send_message(chat_id=kgids(GRPID, regionid),
+                     parse_mode="Markdown",
+                     text="🚨 Order No. #"+"{0} was cancelled".format(cancelledorders[0]))
+    cancelledorders[0] = '0'
     return STOPPING # Bot exits after cancellation
 
 def change_address(update, context):
@@ -802,9 +826,6 @@ def register(update, context):
     update.callback_query.answer()
     update.callback_query.edit_message_text(
         text="*Okay, please tell me your postal code in six digits.*"\
-                "\n\nWe are currently running a trial run and are only operating in:"\
-                "\n📍 Choa Chu Kang"\
-                "\n📍 Yew Tee"\
                 "\n\n_For example: 520123_"\
                 "\n\nType /cancel to cancel",
         parse_mode='Markdown',
@@ -843,8 +864,7 @@ def postal(update, context):
                     building = add_data['results'][x]['BUILDING']
                     if '@' in building:
                         building = building.split('@')[0]
-                    elif len(building) > 20:
-                        building = building[:20]
+                    building = building[:20]
                     full_add = block + ' ' + street + ', ' + building
                     lat = round(float(add_data['results'][x]['LATITUDE']), 3)
                     lng = round(float(add_data['results'][x]['LONGITUDE']), 3)
@@ -914,6 +934,7 @@ def unit(update, context):
         unit = context.user_data['Unit']
         latitude = context.user_data['latitude']
         longitude = context.user_data['longitude']
+
         update.message.reply_text("Your address:\n{}"\
                                   "\nThank you for registering! To change your address,"\
                                   " navigate to Help in the menu.".format(address_format(user_data)))
@@ -1007,7 +1028,6 @@ def main():
     request = Request(con_pool_size=8)
 
     # For production deployment
-    NAME = "recyclables"
     PORT = os.environ.get('PORT')
 
     mainBot = MQBot(TOKEN, request=request, mqueue=q)
@@ -1322,8 +1342,8 @@ def main():
     updater.bot.setWebhook("https://{}.herokuapp.com/{}".format(NAME, TOKEN))
 
     # For local hosting ONLY
-    #updater.start_polling()
-    #updater.idle()
+    # updater.start_polling()
+    # updater.idle()
 
 if __name__ == '__main__':
     main()

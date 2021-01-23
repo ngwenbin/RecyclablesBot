@@ -25,7 +25,7 @@ class Users(object):
             u'postal': self.postal,
             u'latitude': self.latitude,
             u'longitude': self.longitude,
-            u'timestamp': self.timestamp
+            u'timestamp': self.timestamp,
         }
         return userdata
 
