@@ -1,7 +1,6 @@
 import shapely.speedups
 from shapely.geometry import Point
 import geopandas as gpd
-import matplotlib.pyplot as plt
 
 def geofence_find(polys, nums, data):
     for i in range(nums):
@@ -22,10 +21,4 @@ def allocation(lat,lng):
         return "0"
     else:
         return res
-
-    # fig, ax = plt.subplots()
-    # polys.plot(ax=ax, facecolor='gray')
-    # plt.plot(lat,lng,'ro')
-    # plt.tight_layout()
-    # plt.show()
 
