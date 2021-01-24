@@ -12,18 +12,51 @@ Our goal is to improve Singapore’s domestic recycling efforts by partnering wi
 
 ## Requirements to install (Follow the order)
 
-1. Clone repo
-
-2. [Install Conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/). You can either choose between mini conda or anaconda. It makes the dependencies installation much easier.
-
-3. Create a Conda env with the provided yml file. Below are a few useful commands.
-
-```python
-  # To change the name of the env, edit the first line of the yml file before creating it. Deafult is recyclables
-  conda env create -f environment.yml # Create new env with python installed
-  conda info --envs # See list of conda envs
-  conda activate recyclables # activate the env, if you changed the env name, kindly update env name accordingly.
+1. Clone repo and its submodules
+```shell
+  git clone --recursive https://github.com/ngwenbin/RecyclablesBot.git
 ```
+
+2. Switch to dev branch
+```shell
+  git checkout dev-clean
+```
+
+3. Open terminal to create a python venv and install dependencies from req.txt.
+Make sure you are running python 3.8.x
+
+#### For Windows:
+```shell
+  python -m venv YOUR_ENV_NAME # Creates virtual env
+  pip install -r req.txt # install packages from req.txt
+  cd wheel_dependencies # navigates to binary wheel dir
+  for %x in (*.whl) do python -m pip install %x # install binary wheels/ deps
+```
+
+#### For MacOS:
+
+If the pip fails, please use conda with conda forge channel priority to install the packages.
+
+-  With Pip:
+```shell
+    python -m venv YOUR_ENV_NAME # Creates virtual env
+    pip install -r req.txt # install packages from req.txt
+    pip install shapely fiona pyproj # Order is important
+    pip install geopandas # Order is important
+  ```
+
+- With Conda
+
+Install conda via miniconda or anaconda.
+
+```shell
+  conda create --name YOUR_ENV_NAME python=3.8 # Creates virtual env
+  conda config --add channels conda-forge # sets dep channel
+  conda config --set channel_priority strict
+  pip install -r req.txt # install packages from req.txt
+  conda install geopandas # Conda will install the necessary deps
+```
+
 4. Inside kgid.py, do not touch the kg_prod dict as it is for production use only. Update your grpchat ids in the else block:
 ```python
       else: # testing ids, always use this for personal tests.
@@ -44,7 +77,8 @@ HEROKU_NAMES = recyclablesbotlocal
 
 
 ## Misc
-- For unresolved dependencies, check the bottom left bar of vscode and ensure that you are using the correct python interpreter. It should say Python 3.x.x XX-bit {'YOUR_ENV_NAME':conda}
+- For unresolved dependencies, check the bottom left bar of vscode and ensure that you are in the correct environment. It should say Python 3.x.x XX-bit {'env'}. The python interpreter should be pointer at your env python at ENVNAME/Scripts/python.exe
+
 - For production deployment, we are using a webhook to listen for incoming messages. Local testings will use polling. Do take note before commiting.
 ```python
 # For production deployment
