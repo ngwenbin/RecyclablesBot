@@ -722,13 +722,13 @@ def check_past_orders(update, context):
     i = 1
     for order in orders_collection_ref:
         # is there more efficient concatenation methods?
-        orderno = "Order " + str(i)
+        orderno = "\nOrder " + str(i)
         strings = [orderno + "\n============", "*Recyclables:*\n" + f'{order.to_dict().get("item")}', "*Date:*\n", f'{order.to_dict().get("timeslot")}']
         ordersString = ordersString + '\n'.join(strings)
         i += 1
     update.callback_query.answer()
     update.callback_query.edit_message_text(
-        text="Here are your past orders:\n\n" + ordersString,
+        text="Here are your past orders:\n" + ordersString,
         reply_markup=reply_markup,
         parse_mode='Markdown',
     )
@@ -750,7 +750,7 @@ def orders_to_cancel(update, context):
         date.append([int(s) for s in re.findall(r'\b\d+\b', timeslot)])
         if date[i][1] >= int(month) and date[i][0] >= int(day) and date[i][2] >= int(year):
             ordernum = order.to_dict().get("ordernum")
-            orderno = "Order " + str(j+1)
+            orderno = "\nOrder " + str(j+1)
             strings = [orderno + "\n============", "*Recyclables:*\n" + f'{order.to_dict().get("item")}', "\n*Date:*\n" + f'{order.to_dict().get("timeslot")}']
             ordersString = ordersString + '\n'.join(strings)
             keyboard_button.append(InlineKeyboardButton(orderno, callback_data = ordernum))
@@ -760,7 +760,7 @@ def orders_to_cancel(update, context):
     reply_markup = InlineKeyboardMarkup(build_menu(keyboard_button, n_cols=1))
     update.callback_query.answer()
     update.callback_query.edit_message_text(
-        text="Which order would you like to cancel?\n\n"
+        text="Which order would you like to cancel?\n"
             + ordersString+"\n\nType /cancel to cancel",
         reply_markup=reply_markup,
         parse_mode='Markdown',
