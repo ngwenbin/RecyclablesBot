@@ -27,7 +27,6 @@ dependencies:
   - hdf4=4.2.13
   - hdf5=1.10.6
   - icu=68.1
-  - intel-openmp=2020.3
   - jpeg=9d
   - kealib=1.4.14
   - krb5=1.17.2
