@@ -576,7 +576,7 @@ def success(update, context):
     orderDate = '{}-{}-{}'.format(days[-5:-1], days[-8:-6], days[-11:-9])
     URL = "https://us-central1-recyclables-telegram-bot.cloudfunctions.net/app/api/updateCount/" + regionid + '/' + orderDate
     headers = {"Authorization": "Bearer " + API_TOKEN}
-    requests.put(url=URL, headers=headers)
+    requests.patch(url=URL, headers=headers)
 
     # this is for order message notification
     bot = context.bot

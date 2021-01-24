@@ -30,8 +30,9 @@ Make sure you are running python 3.8.x
   python -m venv YOUR_ENV_NAME # Creates virtual env
   pip install -r req.txt # install packages from req.txt
   cd wheel_dependencies # navigates to binary wheel dir
-  for %x in (*.whl) do python -m pip install %x # install binary wheels/ deps
 ```
+**pip install the whl files in the following order - GDAL, pyproj, Fiona, Shapely, geopandas**
+
 
 #### For MacOS:
 
