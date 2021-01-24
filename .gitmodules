@@ -1,0 +1,3 @@
+[submodule "wheel_dependencies"]
+	path = wheel_dependencies
+	url = https://github.com/Recyclables/wheel_dependencies.git
