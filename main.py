@@ -190,7 +190,7 @@ def start(update, context):
             userdatas['regionid'] = allocation(latitude,longitude)
             userdatas['hdb'] = hdb_finder(userdatas['postal'], userdatas['address']) # hdb = 1 means true, hdb = 0 means false
             update.message.reply_text(
-                text=main_text + userdatas['regionid'],
+                text=main_text,
                 parse_mode="Markdown",
                 reply_markup=main_markup
             )
