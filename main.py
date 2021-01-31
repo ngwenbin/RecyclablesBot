@@ -1,4 +1,4 @@
-import gspread, re, logging, telegram.bot, os, requests, time
+import gspread, re, logging, telegram.bot, os, requests, time, json, pricelist
 from telegram import (InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup,
                       ReplyKeyboardRemove, KeyboardButton, ChatAction)
 from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters,
@@ -9,7 +9,6 @@ from google.cloud import firestore
 from shards import Shard, Counter
 from order import Orders
 from user import Users
-import pricelist
 from datetime import datetime
 from geofence.geofence import allocation
 from kgid import kgids
@@ -122,6 +121,10 @@ def build_menu(buttons, n_cols, header_buttons=None, footer_buttons=None):
         menu.append(footer_buttons)
     return menu
 
+def hdb_finder(postal, add):
+    x = re.findall("^([^\s]+)", add)
+    return 1 if x[0] == postal[-3:] else 0
+
 # Main functions
 def start(update, context):
 
@@ -185,6 +188,7 @@ def start(update, context):
             latitude = float(userdatas['latitude'])
             longitude = float(userdatas['longitude'])
             userdatas['regionid'] = allocation(latitude,longitude)
+            userdatas['hdb'] = hdb_finder(userdatas['postal'], userdatas['address']) # hdb = 1 means true, hdb = 0 means false
             update.message.reply_text(
                 text=main_text + userdatas['regionid'],
                 parse_mode="Markdown",
@@ -415,57 +419,64 @@ def date_selection(update, context):
         # gc.login()
         # sheet3 = gc.open("Recyclables (Database)").worksheet("Postals")
         # sheet3.find(userdatas['postal'])
-        if regionid == "0":
+        with open("postal_whbl_list/postal_list.json") as postal_list_file:
+            postal_list_data = json.load(postal_list_file)
+            blacklist = postal_list_data['blacklist']
+            whitelist = postal_list_data['whitelist']
+
+        if regionid == "0" or (userdatas['postal'] in blacklist): # checks if region is within geofence and if the building is a
             raise Exception("Invalid region")
 
-        if context.user_data.get(BASKET):
-            r = requests.get(url=URL, headers=headers)
-            try:
-                date_data = r.json()
-                keyboard_button = []
-
-                for i in date_data['dates']:
-                    date = i['date']
-                    time = i['timestart']+','+i['timeend']
-                    keyboard_button.append(InlineKeyboardButton(date, callback_data=date+','+time))
-
-                reply_markup = InlineKeyboardMarkup(build_menu(keyboard_button, n_cols=1))
-                text = "*Please select your preferred date:*"\
-                    "\n\nType /cancel to exit the bot."
-                update.callback_query.edit_message_text(
-                    text=text,
-                    parse_mode='Markdown',
-                    reply_markup=reply_markup
-                )
-
-            except:
-                text = "*We are fully booked! Please try again next week!*"\
-                        "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding."
-
-                update.callback_query.edit_message_text(
-                    text=text,
-                    parse_mode='Markdown',
-                )
-            update.callback_query.answer()
-            return DATES
-
         else:
-            update.callback_query.answer(
-                text="You cannot proceed to select date"\
-                    " with nothing in your basket!"\
-                    "\n\nPlease add items into your basket.",
-                show_alert=True
-            )
-            return END
+            if not userdatas['hdb']:
+                if userdatas['postal'] not in whitelist:
+                    raise Exception("Invalid region")
+
+            if context.user_data.get(BASKET):
+                r = requests.get(url=URL, headers=headers)
+                try:
+                    date_data = r.json()
+                    keyboard_button = []
+
+                    for i in date_data['dates']:
+                        date = i['date']
+                        time = i['timestart']+','+i['timeend']
+                        keyboard_button.append(InlineKeyboardButton(date, callback_data=date+','+time))
+
+                    reply_markup = InlineKeyboardMarkup(build_menu(keyboard_button, n_cols=1))
+                    text = "*Please select your preferred date:*"\
+                        "\n\nType /cancel to exit the bot."
+                    update.callback_query.edit_message_text(
+                        text=text,
+                        parse_mode='Markdown',
+                        reply_markup=reply_markup
+                    )
+
+                except:
+                    text = "*We are fully booked! Please try again next week!*"\
+                            "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding."
+
+                    update.callback_query.edit_message_text(
+                        text=text,
+                        parse_mode='Markdown',
+                    )
+                update.callback_query.answer()
+                return DATES
+
+            else:
+                update.callback_query.answer(
+                    text="You cannot proceed to select date"\
+                        " with nothing in your basket!"\
+                        "\n\nPlease add items into your basket.",
+                    show_alert=True
+                )
+                return END
 
     except Exception:
         text = "Sorry! You are unable to proceed as your region is currently not available!"\
                 "\n\nWe are only operating in selected areas within:"\
                 "\n📍 Choa Chu Kang"\
                 "\n📍 Yew Tee"\
-                "\n📍 Bukit Batok"\
-                "\n📍 Bukit Panjang"\
-                "\n📍 Holland Village"\
                 "\n\nFollow us on [Instagram](https://www.instagram.com/recyclables.sg/) or [Facebook](https://www.facebook.com/recyclables.sg/) for updates!"\
                 "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding."
         keyboard = [[InlineKeyboardButton("« Back to item basket", callback_data=str(END))]]
@@ -583,7 +594,6 @@ def success(update, context):
     bot.send_message(chat_id=kgids(GRPID, regionid),
                      parse_mode="Markdown",
                      text=order_text+item_text+collection_add+collection_detail)
-
     db.collection(u'orders').document(ordernum).set(Orders(userids, username, ordernum, item, days, timestamp, full_address, regionid).orders_to_dict())
     # sheet2 = gc.open("Recyclables (Database)").worksheet("Orders")
     # sheet2.append_row([ordernum, userids, item, days, full_address], value_input_option="RAW")
@@ -723,7 +733,7 @@ def check_past_orders(update, context):
     for order in orders_collection_ref:
         # is there more efficient concatenation methods?
         orderno = "\nOrder " + str(i)
-        strings = [orderno + "\n============", "*Recyclables:*\n" + f'{order.to_dict().get("item")}', "*Date:*\n", f'{order.to_dict().get("timeslot")}']
+        strings = [orderno + "\n=================", "*Recyclables:*\n" + f'{order.to_dict().get("item")}', "\n*Date:*", f'{order.to_dict().get("timeslot")}\n']
         ordersString = ordersString + '\n'.join(strings)
         i += 1
     update.callback_query.answer()
@@ -751,7 +761,7 @@ def orders_to_cancel(update, context):
         if date[i][1] >= int(month) and date[i][0] >= int(day) and date[i][2] >= int(year):
             ordernum = order.to_dict().get("ordernum")
             orderno = "\nOrder " + str(j+1)
-            strings = [orderno + "\n============", "*Recyclables:*\n" + f'{order.to_dict().get("item")}', "\n*Date:*\n" + f'{order.to_dict().get("timeslot")}']
+            strings = [orderno + "\n=================", "*Recyclables:*\n" + f'{order.to_dict().get("item")}', "\n*Date:*" + f'{order.to_dict().get("timeslot")}\n']
             ordersString = ordersString + '\n'.join(strings)
             keyboard_button.append(InlineKeyboardButton(orderno, callback_data = ordernum))
             j += 1
