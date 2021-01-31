@@ -419,12 +419,15 @@ def date_selection(update, context):
         # gc.login()
         # sheet3 = gc.open("Recyclables (Database)").worksheet("Postals")
         # sheet3.find(userdatas['postal'])
+        if regionid == '0':
+            raise Exception("Invalid region")
+
         with open("postal_whbl_list/postal_list.json") as postal_list_file:
             postal_list_data = json.load(postal_list_file)
             blacklist = postal_list_data['blacklist']
             whitelist = postal_list_data['whitelist']
 
-        if regionid == "0" or (userdatas['postal'] in blacklist): # checks if region is within geofence and if the building is a
+        if userdatas['postal'] in blacklist: # checks if region is within geofence and if the building is a
             raise Exception("Invalid region")
 
         else:
