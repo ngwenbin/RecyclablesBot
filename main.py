@@ -128,13 +128,11 @@ def hdb_finder(postal, add):
 # Main functions
 def start(update, context):
 
-    main_text = "*Recyclables* can help you to schedule "\
+    main_text = "🔔 *Latest news*\n_Our services are now available to HDB residents in Bukit Batok, Bukit Panjang and more!_\n\n"\
+                "*Recyclables* can help you to schedule "\
                 "recycling collections with a karang guni conveniently!"\
-                "\n\nThrough *Recyclables*, you can help the environment "\
-                "and boost the productivity "\
-                "of our local karung gunis."\
-                "\nIn addition to that, you get to receive "\
-                "incentives for your recyclables! ☺️"\
+                "\n\nThrough *Recyclables*, you can help the environment, boost the productivity "\
+                "of our local karung gunis and earn incentives!"\
                 "\n\nHow can I help you?"
 
     register_text = "*Oops! Looks like you are not registered with us.*"\
@@ -413,8 +411,9 @@ def date_selection(update, context):
     context.bot.send_chat_action(
         chat_id=update.effective_message.chat_id, action=ChatAction.TYPING)
     context.user_data[START_OVER] = True
-    URL = "https://us-central1-recyclables-telegram-bot.cloudfunctions.net/app/api/dateSelection/" + regionid
+    URL = "https://us-central1-recyclables-telegram-bot.cloudfunctions.net/app/api/selectDate/" + regionid
     headers = {"Authorization": "Bearer " + API_TOKEN}
+
     try:
         # gc.login()
         # sheet3 = gc.open("Recyclables (Database)").worksheet("Postals")
@@ -440,7 +439,6 @@ def date_selection(update, context):
                 try:
                     date_data = r.json()
                     keyboard_button = []
-
                     for i in date_data['dates']:
                         date = i['date']
                         time = i['timestart']+','+i['timeend']
