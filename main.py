@@ -773,8 +773,9 @@ def orders_to_cancel(update, context):
     keyboard_button.append(InlineKeyboardButton("« Back", callback_data=str(END_CANCELVIEW)))
     reply_markup = InlineKeyboardMarkup(build_menu(keyboard_button, n_cols=1))
     update.callback_query.answer()
+    print(now)
     update.callback_query.edit_message_text(
-        text=now+"\nWhich order would you like to cancel?\n"
+        text="\nWhich order would you like to cancel?\n"
             + ordersString+"\n\nType /cancel to cancel",
         reply_markup=reply_markup,
         parse_mode='Markdown',
