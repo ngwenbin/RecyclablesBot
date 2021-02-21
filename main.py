@@ -714,7 +714,7 @@ def helps_contact(update, context):
     return HELPS
 
 def my_order(update, context):
-    keyboard = [[InlineKeyboardButton("📋 See current orders", callback_data=str(CHECK_ORDERS))],
+    keyboard = [[InlineKeyboardButton("📋 See past orders", callback_data=str(CHECK_ORDERS))],
                 [InlineKeyboardButton("📋 Cancel orders", callback_data=str(CANCEL_ORDERS))],
                 [InlineKeyboardButton("« Back", callback_data=str(END))]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -730,11 +730,12 @@ def check_past_orders(update, context):
     keyboard = [[InlineKeyboardButton("« Back", callback_data=str(END_PAST_ORDERS))]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     # get all orders whose userid field == current user
-    orders_collection_ref = db.collection(u'orders').where(u'userid', u'==', userids).stream()
+    orders_collection_ref = db.collection(u'orders').where(u'userid', u'==', userids)
+    orders_collection_query = orders_collection_ref.limit(3).stream()
     # test on user ids in orders collection
     ordersString = ''
     i = 1
-    for order in orders_collection_ref:
+    for order in orders_collection_query:
         # is there more efficient concatenation methods?
         orderno = "\nOrder " + str(i)
         strings = [orderno + "\n=================", "*Recyclables:*\n" + f'{order.to_dict().get("item")}', "\n*Date:*", f'{order.to_dict().get("timeslot")}\n']
@@ -758,7 +759,8 @@ def orders_to_cancel(update, context):
     date, keyboard_button = [],[]
     i,j=0,0
     ordersString = ''
-    orders_collection_ref = db.collection(u'orders').where(u'userid', u'==', userids).stream()
+    cancel_text = ''
+    orders_collection_ref = db.collection(u'orders').where(u'userid', u'==', userids).limit(2).stream()
     for order in orders_collection_ref:
         timeslot = order.to_dict().get("timeslot")
         date.append([int(s) for s in re.findall(r'\b\d+\b', timeslot)])
@@ -770,13 +772,15 @@ def orders_to_cancel(update, context):
             keyboard_button.append(InlineKeyboardButton(orderno, callback_data = ordernum))
             j += 1
         i+=1
+    if len(ordersString) > 0:
+        cancel_text = "which order would you like to cancel?\n"
+    else:
+        cancel_text = "No orders available to cancel."
     keyboard_button.append(InlineKeyboardButton("« Back", callback_data=str(END_CANCELVIEW)))
     reply_markup = InlineKeyboardMarkup(build_menu(keyboard_button, n_cols=1))
     update.callback_query.answer()
-    print(now)
     update.callback_query.edit_message_text(
-        text="\nWhich order would you like to cancel?\n"
-            + ordersString+"\n\nType /cancel to cancel",
+        text=cancel_text + ordersString+"\n\nType /cancel to cancel",
         reply_markup=reply_markup,
         parse_mode='Markdown',
     )
