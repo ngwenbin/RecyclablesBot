@@ -1,5 +1,5 @@
 class Orders(object):
-    def __init__(self, userid, username, ordernum, item, timeslot, timestamp, address):
+    def __init__(self, userid, username, ordernum, item, timeslot, timestamp, address, regionid):
         self.userid = userid
         self.username = username
         self.ordernum = ordernum
@@ -7,6 +7,7 @@ class Orders(object):
         self.timeslot = timeslot
         self.timestamp = timestamp
         self.address = address
+        self.regionid = regionid
 
     @staticmethod
     def orders_from_dict(source):
@@ -21,7 +22,8 @@ class Orders(object):
             u'item': self.item,
             u'timeslot': self.timeslot,
             u'timestamp': self.timestamp,
-            u'address' : self.address
+            u'address' : self.address,
+            u'regionid': self.regionid
         }
         return orderdata
 
@@ -33,5 +35,6 @@ class Orders(object):
                 item={self.item}, \
                 timeslot={self.timeslot},\
                 timestamp={self.timestamp},\
-                address = {self.address}'
+                address = {self.address},\
+                regionid = {self.regionid}'
         )
