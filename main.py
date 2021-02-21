@@ -478,6 +478,9 @@ def date_selection(update, context):
                 "\n\nWe are only operating in selected areas within:"\
                 "\n📍 Choa Chu Kang"\
                 "\n📍 Yew Tee"\
+                "\n📍 Bukit Batok"\
+                "\n📍 Bukit Panjang"\
+                "\n📍 Holland Village"\
                 "\n\nFollow us on [Instagram](https://www.instagram.com/recyclables.sg/) or [Facebook](https://www.facebook.com/recyclables.sg/) for updates!"\
                 "\n\nType /cancel to exit the bot. Type /start if the buttons are not responding."
         keyboard = [[InlineKeyboardButton("« Back to item basket", callback_data=str(END))]]
@@ -771,7 +774,7 @@ def orders_to_cancel(update, context):
     reply_markup = InlineKeyboardMarkup(build_menu(keyboard_button, n_cols=1))
     update.callback_query.answer()
     update.callback_query.edit_message_text(
-        text="Which order would you like to cancel?\n"
+        text=now+"\nWhich order would you like to cancel?\n"
             + ordersString+"\n\nType /cancel to cancel",
         reply_markup=reply_markup,
         parse_mode='Markdown',
