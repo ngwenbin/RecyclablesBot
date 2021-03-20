@@ -123,7 +123,7 @@ def build_menu(buttons, n_cols, header_buttons=None, footer_buttons=None):
 
 def hdb_finder(postal, add):
     x = re.findall("^([^\s]+)", add)
-    return 1 if x[0] == postal[-3:] else 0
+    return 1 if x[0][0:3] == postal[-3:] else 0
 
 # Main functions
 def start(update, context):
