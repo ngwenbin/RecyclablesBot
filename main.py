@@ -729,24 +729,42 @@ def check_past_orders(update, context):
     userids = str(update.effective_user.id)
     keyboard = [[InlineKeyboardButton("« Back", callback_data=str(END_PAST_ORDERS))]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    # get all orders whose userid field == current user
-    orders_collection_ref = db.collection(u'orders').where(u'userid', u'==', userids)
-    orders_collection_query = orders_collection_ref.limit(3).stream()
-    # test on user ids in orders collection
+
+    now = datetime.now()
+    keyboard_button = []
+
+    # orders_collection_ref = db.collection(u'orders').where(u'userid', u'==', userids).stream()
+    orders_collection_ref = db.collection(u'orders').where(u'userid', u'==', '1356291238').stream()
+    orders_list = []
+
+    for order in orders_collection_ref:
+        timeslot = order.to_dict().get("timeslot")
+        order_time = timeslot[-11:-1] # get order time in form of dd/mm/yyyy
+        order_datetime = datetime(int(order_time[6:10]), int(order_time[3:5]), int(order_time[:2]))
+        if (order_datetime < now):
+            orders_list.append(order)
+
+    num_of_orders = len(orders_list)
     ordersString = ''
     i = 1
-    for order in orders_collection_query:
-        # is there more efficient concatenation methods?
-        orderno = "\nOrder " + str(i)
-        strings = [orderno + "\n=================", "*Recyclables:*\n" + f'{order.to_dict().get("item")}', "\n*Date:*", f'{order.to_dict().get("timeslot")}\n']
+    for order in orders_list:
+        orderno = "\nOrder " + str(order.to_dict().get("ordernum"))
+        strings = [orderno + "\n==================", "*Recyclables:*\n" + f'{order.to_dict().get("item")}', "\n*Date:*", f'{order.to_dict().get("timeslot")}\n']
         ordersString = ordersString + '\n'.join(strings)
         i += 1
     update.callback_query.answer()
-    update.callback_query.edit_message_text(
-        text="Here are your past orders:\n" + ordersString,
-        reply_markup=reply_markup,
-        parse_mode='Markdown',
-    )
+    if num_of_orders == 0:
+        update.callback_query.edit_message_text(
+            text="You don't have any past orders.\n",
+            reply_markup=reply_markup,
+            parse_mode='Markdown',
+        )
+    else:
+        update.callback_query.edit_message_text(
+            text="Here are your past orders:\n" + ordersString,
+            reply_markup=reply_markup,
+            parse_mode='Markdown',
+        )
     return MY_ORDERS
 
 def orders_to_cancel(update, context):
@@ -1355,14 +1373,14 @@ def main():
     dp.add_error_handler(error)
 
     # For production deployment
-    updater.start_webhook(listen="0.0.0.0",
-                          port=int(PORT),
-                          url_path=TOKEN)
-    updater.bot.setWebhook("https://{}.herokuapp.com/{}".format(NAME, TOKEN))
+    # updater.start_webhook(listen="0.0.0.0",
+    #                       port=int(PORT),
+    #                       url_path=TOKEN)
+    # updater.bot.setWebhook("https://{}.herokuapp.com/{}".format(NAME, TOKEN))
 
     # For local hosting ONLY
-    # updater.start_polling()
-    # updater.idle()
+    updater.start_polling()
+    updater.idle()
 
 if __name__ == '__main__':
     main()
