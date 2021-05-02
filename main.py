@@ -733,8 +733,8 @@ def check_past_orders(update, context):
     now = datetime.now()
     keyboard_button = []
 
-    # orders_collection_ref = db.collection(u'orders').where(u'userid', u'==', userids).stream()
-    orders_collection_ref = db.collection(u'orders').where(u'userid', u'==', '1356291238').stream()
+    orders_collection_ref = db.collection(u'orders').where(u'userid', u'==', userids).stream()
+    # orders_collection_ref = db.collection(u'orders').where(u'userid', u'==', '1356291238').stream()
     orders_list = []
 
     for order in orders_collection_ref:
