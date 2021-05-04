@@ -725,13 +725,14 @@ def my_order(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.answer()
     update.callback_query.edit_message_text(
-        text="Hi, what would you like to do?",
+        text="Hi, what would you like to do? \
+            \n\nPlease note that viewing past orders will only show your last 15 orders",
         reply_markup=reply_markup
     )
     return MY_ORDERS
 
-def check_past_orders_page1(update, context):
 
+def check_past_orders_page1(update, context):
     userids = str(update.effective_user.id)
     if not past_orders_list:  # if list is empty, then fetch from firebase
         # load_past_orders('12345678') # for testing
@@ -739,6 +740,8 @@ def check_past_orders_page1(update, context):
 
     num_of_orders = len(past_orders_list)
     if num_of_orders == 0:
+        keyboard = [[InlineKeyboardButton("« Back", callback_data=str(END_PAST_ORDERS))]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
         update.callback_query.answer()
         update.callback_query.edit_message_text(
             text="You don't have any past orders.\n",
