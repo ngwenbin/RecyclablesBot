@@ -826,16 +826,18 @@ def check_past_orders_page3(update, context):
 
 
 def load_past_orders(userids):
-    orders_collection_ref = db.collection(u'orders').where(u'userid', u'==', userids).stream()
+    orders_collection_ref = db.collection(u'orders')
+    query = orders_collection_ref.where(u'userid', u'==', userids).order_by(u'timestamp', direction=firestore.Query.DESCENDING).limit(15)
+    results = query.stream()
+
     now = datetime.now()
     # get orders that are before current time
-    for order in orders_collection_ref:
+    for order in results:
         timeslot = order.to_dict().get("timeslot")
         order_time = timeslot[-11:-1] #  get order time in form of dd/mm/yyyy
         order_datetime = datetime(int(order_time[6:10]), int(order_time[3:5]), int(order_time[:2]))
         if (order_datetime < now):
             past_orders_list.append(order)
-    past_orders_list.reverse()  # so earliest order is in front
 
 
 def order_to_string(order, ordernum):
