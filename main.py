@@ -28,6 +28,8 @@ GRPID = os.getenv("GROUPCHAT_ID")
 NAME = os.getenv("HEROKU_NAMES")
 userdatas = {} # global user dict
 cancelledorders = {}
+past_orders_list = []
+
 class MQBot(telegram.bot.Bot): # Class handler for message queue
 
     def __init__(self, *args, is_queued_def=True, mqueue=None, **kwargs):
@@ -58,21 +60,21 @@ HELPS, FAQ, CONTACT, CHANGE_ADDRESS, END_HELPS, PROCEED = map(chr, range(11, 17)
 # Second level states
 INFOS, ABOUT, PRIVACY, END_INFO = map(chr, range(17, 21))
 # Second level states
-MY_ORDERS, CHECK_ORDERS, END_PAST_ORDERS = map(chr,range(21,24))
+MY_ORDERS, END_PAST_ORDERS = map(chr,range(21,23))
 # Second level states
-RECYCLABLES, ITEM_PAPERS, ITEM_ELECTRONICS, ITEM_CLOTHES = map(chr, range(24, 28))
+RECYCLABLES, ITEM_PAPERS, ITEM_ELECTRONICS, ITEM_CLOTHES = map(chr, range(23, 27))
 # Third level states
 (WEIGHT, CONFIRM, SELECT_DATE, CLEAR_ITEM, CLEAR, END_CLEAR,
- END_ELECTRONICS) = map(chr, range(28, 35))
+ END_ELECTRONICS) = map(chr, range(27, 34))
 # Fourth level states
-DATES, AGREEMENT, END_AGREEMENT = map(chr, range(35, 38))
+DATES, AGREEMENT, END_AGREEMENT = map(chr, range(34, 37))
 # Fifth level states
-CONFIRM_ORDER, CHECKOUT = map(chr, range(38, 40))
+CONFIRM_ORDER, CHECKOUT = map(chr, range(37, 39))
 # Constants
 (START_OVER, PAPERS, CLOTHES, DAYS, TIMES, BASKET,
- ITEM_TYPE, ROW, FULL_ADDRESS) = map(chr, range(40, 49))
+ ITEM_TYPE, ROW, FULL_ADDRESS) = map(chr, range(39, 48))
 # Meta states
-STOPPING = map(chr, range(50,51))
+STOPPING = map(chr, range(49,50))
 # Paper meta states
 PAPER1, PAPER2, PAPER3, PAPER4 = map(chr, range(4))
 # Clothes meta states
@@ -81,6 +83,8 @@ CLOTHES1, CLOTHES2, CLOTHES3, CLOTHES4 = map(chr, range(4, 8))
 CHOICE1, CHOICE2 = map(chr, range(8, 10))
 # Order cancelleation states
 CANCEL_ORDERS, CANCEL_VIEW, CANCEL_CONFIRMATION, CANCELYES, END_CANCEL,END_CANCELVIEW = map(chr,range(10,16))
+
+CHECK_ORDERS_P1, CHECK_ORDERS_P2, CHECK_ORDERS_P3 = map(chr,range(16,19))
 
 END = ConversationHandler.END
 
@@ -713,41 +717,136 @@ def helps_contact(update, context):
     )
     return HELPS
 
+
 def my_order(update, context):
-    keyboard = [[InlineKeyboardButton("📋 See past orders", callback_data=str(CHECK_ORDERS))],
+    keyboard = [[InlineKeyboardButton("📋 See past orders", callback_data=str(CHECK_ORDERS_P1))],
                 [InlineKeyboardButton("📋 Cancel orders", callback_data=str(CANCEL_ORDERS))],
                 [InlineKeyboardButton("« Back", callback_data=str(END))]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.callback_query.answer()
     update.callback_query.edit_message_text(
-        text="Hi, what would you like to do?",
+        text="Hi, what would you like to do? \
+            \n\nPlease note that viewing past orders will only show your last 15 orders",
         reply_markup=reply_markup
     )
     return MY_ORDERS
 
-def check_past_orders(update, context):
+
+def check_past_orders_page1(update, context):
     userids = str(update.effective_user.id)
-    keyboard = [[InlineKeyboardButton("« Back", callback_data=str(END_PAST_ORDERS))]]
+    if not past_orders_list:  # if list is empty, then fetch from firebase
+        # load_past_orders('12345678') # for testing
+        load_past_orders(userids)
+
+    num_of_orders = len(past_orders_list)
+    if num_of_orders == 0:
+        keyboard = [[InlineKeyboardButton("« Back", callback_data=str(END_PAST_ORDERS))]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        update.callback_query.answer()
+        update.callback_query.edit_message_text(
+            text="You don't have any past orders.\n",
+            reply_markup=reply_markup,
+            parse_mode='Markdown',
+        )
+        return MY_ORDERS
+    
+    orders_string = ""
+    if num_of_orders <= 5:
+        keyboard = [[InlineKeyboardButton("« Back to menu", callback_data=str(END_PAST_ORDERS))]]
+        range_of_index = range(1, num_of_orders + 1)
+    else:
+        keyboard = [[InlineKeyboardButton("Next page", callback_data=str(CHECK_ORDERS_P2))],
+                    [InlineKeyboardButton("« Back to menu", callback_data=str(END_PAST_ORDERS))]]
+        range_of_index = range(1, 6)
     reply_markup = InlineKeyboardMarkup(keyboard)
-    # get all orders whose userid field == current user
-    orders_collection_ref = db.collection(u'orders').where(u'userid', u'==', userids)
-    orders_collection_query = orders_collection_ref.limit(3).stream()
-    # test on user ids in orders collection
-    ordersString = ''
-    i = 1
-    for order in orders_collection_query:
-        # is there more efficient concatenation methods?
-        orderno = "\nOrder " + str(i)
-        strings = [orderno + "\n=================", "*Recyclables:*\n" + f'{order.to_dict().get("item")}', "\n*Date:*", f'{order.to_dict().get("timeslot")}\n']
-        ordersString = ordersString + '\n'.join(strings)
+    for i in range_of_index:
+        order_string = order_to_string(past_orders_list[i - 1], i)
         i += 1
+        orders_string = orders_string + order_string
+
     update.callback_query.answer()
     update.callback_query.edit_message_text(
-        text="Here are your past orders:\n" + ordersString,
+        text="Here are your past orders:\n" + orders_string,
         reply_markup=reply_markup,
         parse_mode='Markdown',
     )
     return MY_ORDERS
+
+
+def check_past_orders_page2(update, context):
+
+    num_of_orders = len(past_orders_list)
+    orders_string = ""
+    if num_of_orders <= 10:
+        keyboard = [[InlineKeyboardButton("Previous page", callback_data=str(CHECK_ORDERS_P1))],
+                    [InlineKeyboardButton("« Back to menu", callback_data=str(END_PAST_ORDERS))]]
+        range_of_index = range(6, num_of_orders + 1)
+    else:
+        keyboard = [[InlineKeyboardButton("Next page", callback_data=str(CHECK_ORDERS_P3))],
+                    [InlineKeyboardButton("Previous page", callback_data=str(CHECK_ORDERS_P1))],
+                    [InlineKeyboardButton("« Back to menu", callback_data=str(END_PAST_ORDERS))]]
+        range_of_index = range(6, 11)
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    for i in range_of_index:
+        order_string = order_to_string(past_orders_list[i - 1], i)
+        i += 1
+        orders_string = orders_string + order_string
+
+    update.callback_query.answer()
+    update.callback_query.edit_message_text(
+        text="Here are your past orders:\n" + orders_string,
+        reply_markup=reply_markup,
+        parse_mode='Markdown',
+    )
+    return MY_ORDERS
+
+
+def check_past_orders_page3(update, context):
+    keyboard = [[InlineKeyboardButton("Previous page", callback_data=str(CHECK_ORDERS_P2))],
+                [InlineKeyboardButton("« Back to menu", callback_data=str(END_PAST_ORDERS))]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    num_of_orders = len(past_orders_list)
+    # print("num of orders is " + str(num_of_orders))
+    orders_string = ""
+
+    for i in range(11, num_of_orders + 1):
+        order_string = order_to_string(past_orders_list[i - 1], i)
+        i += 1
+        orders_string = orders_string + order_string
+
+    update.callback_query.answer()
+    update.callback_query.edit_message_text(
+        text="Here are your past orders:\n" + orders_string,
+        reply_markup=reply_markup,
+        parse_mode='Markdown',
+    )
+    return MY_ORDERS
+
+
+def load_past_orders(userids):
+    orders_collection_ref = db.collection(u'orders')
+    query = orders_collection_ref.where(u'userid', u'==', userids).order_by(u'timestamp', direction=firestore.Query.DESCENDING).limit(15)
+    results = query.stream()
+
+    now = datetime.now()
+    # get orders that are before current time
+    for order in results:
+        timeslot = order.to_dict().get("timeslot")
+        order_time = timeslot[-11:-1] #  get order time in form of dd/mm/yyyy
+        order_datetime = datetime(int(order_time[6:10]), int(order_time[3:5]), int(order_time[:2]))
+        if (order_datetime < now):
+            past_orders_list.append(order)
+
+
+def order_to_string(order, ordernum):
+    order_string = ""
+    orderno = "\nOrder " + str(ordernum)
+    strings = [orderno + "\n==================", "*Recyclables:*\n" + f'{order.to_dict().get("item")}', "\n*Date:*", f'{order.to_dict().get("timeslot")}\n']
+    order_string = '\n'.join(strings)
+    return order_string
+
 
 def orders_to_cancel(update, context):
     userids = str(update.effective_user.id)
@@ -1226,7 +1325,9 @@ def main():
         states={
             MY_ORDERS: [
                 cancel_level,
-                CallbackQueryHandler(check_past_orders, pattern='^' + str(CHECK_ORDERS) + '$'),
+                CallbackQueryHandler(check_past_orders_page1, pattern='^' + str(CHECK_ORDERS_P1) + '$'),
+                CallbackQueryHandler(check_past_orders_page2, pattern='^' + str(CHECK_ORDERS_P2) + '$'),
+                CallbackQueryHandler(check_past_orders_page3, pattern='^' + str(CHECK_ORDERS_P3) + '$'),
                 CallbackQueryHandler(my_order, pattern='^' + str(END_PAST_ORDERS) + '$'),
             ],
         },
